@@ -1,0 +1,181 @@
+:where(.css-dev-only-do-not-override-1fzjxp5).ant-card .ant-card-meta-title {
+   font-size: 14px;
+   max-width: 210px;
+   white-space: normal !important;
+   overflow: hidden;
+   display: -webkit-box; /* 使文本容器变为弹性盒子 */
+   -webkit-line-clamp: 2; /* 限制最多显示两行 */
+   -webkit-box-orient: vertical; /* 垂直排列文本 */
+   text-overflow: ellipsis; /* 溢出部分显示省略号 */
+}
+:where(.css-dev-only-do-not-override-1fzjxp5).ant-card .ant-card-meta-title :hover {
+   white-space: normal !important;
+   overflow: visible;
+   display: block;
+   -webkit-line-clamp: initial;
+   -webkit-box-orient: initial;
+   text-overflow: initial;
+   color:#8e8e8e;
+}
+/* 包裹标题和侧边栏的父容器 */
+.related-products-wrapper {
+    
+    position: absolute;
+    top: 200px; /* 根据页面布局调整 */
+    right: 100px; /* 紧靠右侧 */
+    width: 240px; /* 调整宽度 */
+}
+
+/* 主标题 */
+.related-products-title-outside {
+    text-align: center;
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 15px; /* 标题与侧边栏之间的间距 */
+    color: #333;
+    margin-right: 15px;
+}
+
+/* 框内的相关产品部分 */
+.related-products-sidebar {
+    max-height: 500px; /* 固定高度 */
+    overflow-y: auto; /* 内部滚动 */
+    padding: 10px;
+    background-color: #f9f9f9;
+    border: 1px solid #eaeaea;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* 卡片的样式 */
+.related-product-card {
+    margin-bottom: 15px;
+    border: none;
+}
+
+.related-product-card img {
+    height: 130px;
+    object-fit: cover;
+}
+
+
+.related-products-sidebar {
+    
+    top: 200px; 
+    right: 19vb; 
+    width: 221px; 
+    max-height: 500px; 
+    overflow-y: auto;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border: 1px solid #eaeaea;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+}
+
+
+.related-products-title {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 20px;
+    font-weight: bold;
+   
+}
+
+.related-products-content .ant-card {
+    margin-bottom: 15px;
+}
+
+.related-product-card {
+    border: none;
+    transition: box-shadow 0.3s;
+}
+
+.related-product-card:hover {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.related-product-card img {
+    height: 130px;
+    object-fit: cover;
+}
+
+.price {
+    font-size: 16px;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.view-details-btn {
+    display: inline-block;
+   
+    color: #fff;
+    border-radius: 4px;
+    text-decoration: none;
+    transition: background-color 0.3s;
+}
+
+
+
+/* 相关产品部分（移动端） */
+.related-products-mobile {
+    padding: 20px;
+    background-color: #f9f9f9;
+    margin-top: 40px;
+    border: 1px solid #eaeaea;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.related-products-mobile .ant-card {
+    margin-bottom: 15px;
+}
+
+/* 隐藏桌面端相关产品侧边栏在移动端 */
+@media (max-width: 1437px) {
+    .related-products-sidebar {
+        display: none;
+    }
+    .related-products-title-outside {
+        display: none;
+    }
+    :where(.css-dev-only-do-not-override-1fzjxp5).ant-card .ant-card-body {
+        padding: 9px;
+        
+    }
+}
+
+/* 隐藏移动端相关产品部分在桌面端 */
+@media (min-width: 1436px) {
+    .related-products-mobile {
+        display: none;
+    }
+    
+}
+
+/* 调整容器宽度以避免侧边栏重叠 */
+.product-main-section {
+    max-width: calc(100% - 340px); /* 容器宽度减去侧边栏宽度和右边距 */
+  
+}
+
+@media (max-width: 991px) {
+    .product-main-section {
+        max-width: 100%;
+        margin-left: 0;
+        padding-right: 0;
+    }
+}
+
+/* 自定义滚动条（可选） */
+.related-products-sidebar::-webkit-scrollbar {
+    width: 8px;
+}
+
+.related-products-sidebar::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+.related-products-sidebar::-webkit-scrollbar-track {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+}

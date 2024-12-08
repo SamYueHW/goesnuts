@@ -11,3 +11,32 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* .ant-btn-primary {
+  background-color: #59ab02 !important;
+  border-color: #59ab02;
+}
+
+.ant-btn-primary:hover, .ant-btn-primary:focus {
+  background-color: #489001;
+  border-color: #489001;
+}
+
+.ant-btn-primary:active {
+  background-color: #367800;
+  border-color: #367800;
+}
+
+.ant-checkbox-checked .ant-checkbox-inner {
+  background-color: #59ab02;
+  border-color: #59ab02;
+}
+
+.ant-radio-checked .ant-radio-inner {
+  border-color: #59ab02;
+}
+
+.ant-slider-track {
+  background-color: #59ab02;
+  border-color: #59ab02;
+} */

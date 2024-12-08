@@ -1,0 +1,38 @@
+.admin_store_config{
+    margin-left: 50px;
+    margin-right: 50px;
+}
+
+.store-open-time .ant-form-item {
+    margin-bottom: 8px; /* Reduce the bottom margin */
+  }
+  
+  .store-open-time .ant-row {
+    margin-left: 0;
+    margin-right: 0;
+  }
+  
+  .store-open-time .ant-col {
+    padding-left: 4px; /* Reduce the default padding */
+    padding-right: 4px;
+  }
+  .store-open-time-content{
+    padding-top: 10px;
+    margin-left: 30px;
+    margin-right: 50px;
+    margin-bottom: 50px;
+  }
+  
+  /* Specific styles for the tilde (~) to ensure it's vertically centered */
+  .store-open-time .ant-col-1 {
+    line-height: 32px; /* Adjust the line height to vertically center the tilde */
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+  
+  /* Make sure the TimePicker takes the full width of its container */
+  .store-open-time .ant-picker {
+    width: 100% !important;
+    margin-bottom: 3px !important;
+  }
+  

@@ -1,0 +1,398 @@
+/* Search Icon in page_t1 */
+.page_t1 .search-icon {
+ 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  cursor: pointer;
+  margin-left: 10px; /* Spacing between icons */
+}
+
+.page_t1 .search-icon img {
+  width: 19px;
+  height: 19px;
+}
+
+/* Mobile Search Input */
+.mobile-search {
+  position: fixed;
+  top: 148px; /* page_t1 is at top 90px, +48px height */
+  width: 100%;
+  padding: 10px 15px;
+  background-color: #fff;
+  box-shadow: 0px 4px 5px -2px #0c140e2e;
+  z-index: 940;
+  /* 显示的时候有一点动画柔和一点 */
+  animation-name: menu_sticky;
+  animation-duration: 0.20s;
+  /* animation-timing-function: ease-in-out; */
+  
+}
+
+.mobile-search form {
+  display: flex;
+}
+
+.mobile-search input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px 0 0 4px;
+  font-size: 14px;
+}
+
+.mobile-search button {
+  padding: 8px 10px;
+  border: none;
+  background-color: #59ab02a6;
+  color: #fff;
+  border-radius: 0 4px 4px 0;
+  cursor: pointer;
+}
+
+.mobile-search button:hover {
+  background-color: #4e9e02;
+}
+
+/* Ensure the mobile search input is hidden on larger screens */
+@media (min-width: 768px) {
+  .mobile-search {
+    display: none;
+  }
+}
+
+/* Adjust page_t1 to accommodate the new search icon on mobile */
+@media (max-width: 767px) {
+  .page_t1 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+
+
+
+
+/* Category Links */
+.category-link {
+  color: #8e8e8e;
+  text-decoration: none;
+  font-family: "Roboto", sans-serif;
+  font-size: 15px;
+  transition: color 0.3s ease;
+}
+
+.category-link:hover,
+.category-link.selected {
+  color: #59ab02a6;
+}
+
+/* Show More Button */
+.sidebar-widget .btn-link {
+  color: #59ab02a6;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.sidebar-widget .btn-link:hover {
+  color: #4e9e02;
+}
+
+/* Categories in Top Bar */
+.page_t1 ul {
+  display: flex;
+  overflow-x: auto;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.page_t1 ul li {
+  display: inline-block;
+  padding: 16px;
+  font-size: 16px;
+  position: relative;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.page_t1 .box ul li.active {
+  color: #59ab02a6;
+}
+
+.page_t1 .box ul li.active::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 3px;
+  border-radius: 100px;
+  background: #59ab02a6;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  margin: auto;
+}
+
+/* Icon Popup */
+.icon_popup {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  background: #fff;
+  box-shadow: 0 0 10px 0 rgba(0,0,0,0.2);
+  overflow: hidden;
+  transition: height 0.3s ease, opacity 0.3s ease;
+  height: 0;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.icon_popup.show {
+  height: 297px;
+  opacity: 1;
+  visibility: visible;
+}
+
+.icon_popup .head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid #e6e6e6;
+}
+
+.icon_popup .head span {
+  font-size: 20px;
+}
+
+.icon_popup .body {
+  max-height: 240px;
+  overflow: auto;
+  padding: 8px;
+}
+
+.icon_popup .body .cell_item {
+  padding: 8px;
+  font-size: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.icon_popup .body .cell_item:hover {
+  background-color: #f5f5f5;
+}
+
+.icon_popup .body .cell_item.active {
+  color: #59ab02a6;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 767px) {
+  .col-xl-3, .col-lg-4, .col-md-4, .col-sm-6 {
+    width: 50%;
+  }
+  .Add-to-cart{
+    display: none;
+  }
+  .shop-topbar-wrapper {
+    display: none;
+  }
+  .sidebar-wrapper {
+    display: none;
+  }
+}
+
+@media (max-width: 500px) {
+  #theme-main-menu.fixed .tran3s {
+    margin-top: 16px;
+  }
+}
+
+@media (min-width: 768px) {
+  .page_t1 {
+    display: none !important;
+  }
+}
+
+#theme-main-menu {
+  position: relative;
+  z-index: 1000;
+}
+
+#theme-main-menu.fixed {
+  position: fixed;
+  top: 0;
+  width: 100%;
+}
+
+@media (max-width: 767px) {
+  #theme-main-menu.fixed {
+    box-shadow: none;
+  }
+}
+
+
+
+.page_t1  {
+  position: fixed;
+  top: 90px;
+  width: 100%;
+  z-index: 950;
+  animation-name: menu_sticky;
+  animation-duration: 0.90s;
+  animation-timing-function: ease-in-out;
+  box-shadow: 0px 4px 5px -2px #0c140e2e;
+  
+  background-color: white;
+}
+.blank-space {
+  height: 90px;
+}
+
+.container1 {
+  padding-top: 100px;
+  /* 左右留空白 */
+  padding-left: 15px;
+  padding-right: 15px;
+  max-height: calc(100vh - 90px); 
+  overflow-y: auto;
+}
+
+.page_t1 .icon {
+  width: 92px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.page_t1 .icon::after {
+  content: "";
+  width: 30px;
+  height: 100%;
+  position: absolute;
+  right: 92px;
+  top: 0;
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0), #fff);
+}
+
+/* Enhanced "Show More" Button Styling */
+.sidebar-widget .btn-link {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 14px;
+  text-decoration: underline;
+}
+
+/* Optional: Smooth Transition for Category List */
+.shop-catigory ul {
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+
+.shop-catigory ul li {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.shop-catigory ul li.hidden {
+  opacity: 0;
+  transform: scaleY(0);
+  height: 0;
+  overflow: hidden;
+}
+
+.shop-catigory ul li.visible {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+/* Additional Aesthetic Enhancements */
+
+/* Add some spacing and border for categories
+.shop-catigory ul li {
+  margin-bottom: 8px;
+} */
+.sidebar-widget .shop-catigory > ul > li {
+  padding: 0!important;
+}
+
+.shop-catigory ul li a {
+  display: block;
+  padding: 10px;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.shop-catigory ul li a:hover,
+.shop-catigory ul li a.selected {
+  background-color: #f0f0f0;
+}
+
+/* Style the "Show More" button */
+.sidebar-widget .btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  color: #59ab02a6;
+}
+
+.sidebar-widget .btn-link:hover {
+  color: #4e9e02;
+}
+
+
+.product-img {
+  width: 100%; /* Ensures the container takes full width of its parent */
+  /* height: 200px; Set a fixed height; adjust as needed */
+  overflow: hidden; /* Hide any overflow to maintain layout */
+  position: relative; /* For positioning child elements if needed */
+}
+
+.product-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Ensures the image covers the container */
+  transition: transform 0.3s ease; /* Optional: Adds a hover effect */
+}
+
+.product-img img:hover {
+  transform: scale(1.05); /* Optional: Slight zoom on hover */
+}
+.product-description {
+  color: #8e8e8e;
+}
+.product-name {
+  width: 100%;
+  line-height: 1.5em;
+  height: 3em; /* 1.5em * 2 */
+  
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  
+  position: relative;
+}
+
+.product-name::after {
+  content: '';
+  height: 1.5em; /* Same as line-height */
+  width: 100%;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+}

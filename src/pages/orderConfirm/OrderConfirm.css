@@ -1,0 +1,26 @@
+.order-confirm {
+    text-align: center;
+    padding: 20px;
+}
+
+.loading {
+    font-size: 24px;
+    margin-top: 50px;
+}
+
+.order-success {
+    margin-top: 20px;
+}
+
+.order-details, .customer-details, .delivery-address {
+    margin-top: 20px;
+}
+
+.order-details ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.order-details li {
+    margin: 5px 0;
+}
