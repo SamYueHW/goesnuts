@@ -8,6 +8,7 @@ import { useParams } from 'react-router-dom';
 
 const ContactUs = () => {
   const { storeUrl } = useParams();
+  sessionStorage.setItem('storeUrl', storeUrl);
   const [storeTimeTable, setStoreTimeTable] = useState([]);
   const [storeAddress, setStoreAddress] = useState("");
   const [storePhoneNumber, setStorePhoneNumber] = useState("");
@@ -198,7 +199,7 @@ const ContactUs = () => {
           <div className="breadcrumb-wrapper">
             <Breadcrumb>
               <Breadcrumb.Item>
-                <a href="/home.html">
+                <a href="/">
                   <HomeOutlined />
                   <span style={{ marginLeft: "6px" }}>Home</span>
                 </a>

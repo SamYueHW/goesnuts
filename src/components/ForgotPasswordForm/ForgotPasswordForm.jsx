@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, message } from 'antd';
+import { Form, Input, Button, message, Alert, Space, Row, Col } from 'antd';
 
 function ForgotPasswordForm({ onBack, onSuccess }) {
   const [form] = Form.useForm();
@@ -7,6 +7,7 @@ function ForgotPasswordForm({ onBack, onSuccess }) {
   const [cooldown, setCooldown] = useState(0); // 冷却倒计时
   const [isCodeSent, setIsCodeSent] = useState(false); // 检查是否已发送验证码
   const [isVerifying, setIsVerifying] = useState(false); // 检查是否正在验证验证码
+  const [showEmailTip, setShowEmailTip] = useState(false); // 显示邮件提示
 
   // 使用 useEffect 进行倒计时处理
   useEffect(() => {
@@ -40,6 +41,7 @@ function ForgotPasswordForm({ onBack, onSuccess }) {
 
       setCooldown(30); // 设置冷却时间为30秒
       setIsCodeSent(true); // 设置验证码已发送
+      setShowEmailTip(true); // 显示邮件提示
       message.success('Verification code sent to your email.');
 
     } catch (error) {
@@ -94,11 +96,35 @@ function ForgotPasswordForm({ onBack, onSuccess }) {
           { type: 'email', message: 'Please enter a valid email!' },
         ]}
       >
-        <Input placeholder="Your Email" disabled={isCodeSent} />
+        <Row gutter={8}>
+          <Col flex="auto">
+            <Input placeholder="Your Email" />
+          </Col>
+          <Col>
+            <Button
+              type="primary"
+              onClick={handleSendCode}
+              disabled={cooldown > 0 || isSendingCode}
+              loading={isSendingCode}
+            >
+              {cooldown > 0 ? `${cooldown}s` : 'Send Code'}
+            </Button>
+          </Col>
+        </Row>
       </Form.Item>
 
-      {/* 发送验证码 */}
-      {isCodeSent ? (
+      {showEmailTip && (
+        <Form.Item>
+          <Alert
+            message="If you don't receive the email, please check your spam/junk folder."
+            type="info"
+            showIcon
+            closable={false}
+          />
+        </Form.Item>
+      )}
+
+      {isCodeSent && (
         <>
           {/* 输入验证码 */}
           <Form.Item
@@ -148,17 +174,6 @@ function ForgotPasswordForm({ onBack, onSuccess }) {
             </Button>
           </Form.Item>
         </>
-      ) : (
-        <Form.Item>
-          <Button
-            type="primary"
-            onClick={handleSendCode}
-            disabled={cooldown > 0 || isSendingCode}
-            block
-          >
-            {cooldown > 0 ? `Send Code (${cooldown}s)` : 'Send Verification Code'}
-          </Button>
-        </Form.Item>
       )}
 
       <Form.Item>

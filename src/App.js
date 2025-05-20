@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Header from './components/Headers/Header';
 import Home from './pages/Home/Home';
 import Shop from './pages/Shop/Shop';
@@ -32,12 +32,13 @@ const App = () => {
     <Router>
       {/* <div className="main-page-wrapper"> */}
         <Routes>
+          <Route path="/home" element={<Navigate to="/home.html" />} />
           <Route path="/adminLogin/:storeUrl" element={<OnlineOrderLogin />} />
           <Route path="/shop/:storeUrl/:category?" element={<Shop />} />
 
           <Route path="/adminOrderList" element={<AdminList />} />
           <Route path="/adminStoreConfig" element={<AdminStoreConfig />} />
-          <Route path="/product-details/:productId/:productDetials" element={<ProductDetail />} />
+          <Route path="/shop/:storeUrl/product-details/:productId/:productDetials" element={<ProductDetail />} />
           <Route path="/checkout/:storeUrl/:encryptedOrderId?" element={<Checkout />} />
           <Route path="/order-success/:storeUrl/:encryptedOrderId?" element={<OrderSucess />} />
           <Route path="/order-success" element={<OrderResult />} />

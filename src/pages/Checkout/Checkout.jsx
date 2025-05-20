@@ -190,7 +190,7 @@ const Checkout = () => {
     setLoginError(null);
 
     try {
-      const response = await axios.post(`${process.env.REACT_APP_SERVER_URL}/loginCustomer`, {
+      const response = await axios.post(`${process.env.REACT_APP_SERVER_URL}/customerLogin`, {
         email: values.email,
         password: values.password,
         storeId: storeId,
@@ -200,59 +200,59 @@ const Checkout = () => {
         const data = response.data;
         message.success('Logged in successfully');
 
-        form.setFieldsValue({
-          firstName: data.user.customerSurname,
-          middleName: data.user.customerMiddleName,
-          lastName: data.user.customerLastName,
-          email: data.user.CustomerEmail,
-          phone: data.user.phone,
-          ABN: data.user.ABN,
-          address: data.user.billingAddress.address,
-          city: data.user.billingAddress.city,
-          state: data.user.billingAddress.state,
-          zip: data.user.billingAddress.zip,
-          country: data.user.billingAddress.country,
-          shipAddress: data.user.deliveryAddress.address,
-          shipCity: data.user.deliveryAddress.city,
-          shipState: data.user.deliveryAddress.state,
-          shipZip: data.user.deliveryAddress.zip,
-          shipCountry: data.user.deliveryAddress.country,
-          differentAddress:
-            data.user.deliveryAddress.address !== data.user.billingAddress.address && data.user.deliveryAddress !== null && data.user.deliveryAddress !== "",
-        });
+        // form.setFieldsValue({
+        //   firstName: data.user.customerSurname,
+        //   middleName: data.user.customerMiddleName,
+        //   lastName: data.user.customerLastName,
+        //   email: data.user.CustomerEmail,
+        //   phone: data.user.phone,
+        //   ABN: data.user.ABN,
+        //   address: data.user.billingAddress.address,
+        //   city: data.user.billingAddress.city,
+        //   state: data.user.billingAddress.state,
+        //   zip: data.user.billingAddress.zip,
+        //   country: data.user.billingAddress.country,
+        //   shipAddress: data.user.deliveryAddress.address,
+        //   shipCity: data.user.deliveryAddress.city,
+        //   shipState: data.user.deliveryAddress.state,
+        //   shipZip: data.user.deliveryAddress.zip,
+        //   shipCountry: data.user.deliveryAddress.country,
+        //   differentAddress:
+        //     data.user.deliveryAddress.address !== data.user.billingAddress.address && data.user.deliveryAddress !== null && data.user.deliveryAddress !== "",
+        // });
 
-        // Update billingInfo
-        setBillingInfo({
-          storeId,
-          firstName: data.user.customerSurname,
-          middleName: data.user.customerMiddleName || null,
-          lastName: data.user.customerLastName,
-          email: data.user.email,
-          phone: data.user.phone,
-          companyName: data.user.companyName || null,
-          ABN: data.user.ABN || null,
-          orderNotes: '',
-          billingAddress: {
-            address: data.user.billingAddress.address,
-            city: data.user.billingAddress.city,
-            state: data.user.billingAddress.state,
-            zip: data.user.billingAddress.zip,
-            country: data.user.billingAddress.country,
-          },
-          deliveryAddress: data.user.deliveryAddress
-            ? {
-                address: data.user.deliveryAddress.address,
-                city: data.user.deliveryAddress.city,
-                state: data.user.deliveryAddress.state,
-                zip: data.user.deliveryAddress.zip,
-                country: data.user.deliveryAddress.country,
-              }
-            : null,
-          deliveryMethod: data.user.deliveryMethod || 'delivery', // Assuming deliveryMethod is part of data.user
-        });
+        // // Update billingInfo
+        // setBillingInfo({
+        //   storeId,
+        //   firstName: data.user.customerSurname,
+        //   middleName: data.user.customerMiddleName || null,
+        //   lastName: data.user.customerLastName,
+        //   email: data.user.email,
+        //   phone: data.user.phone,
+        //   companyName: data.user.companyName || null,
+        //   ABN: data.user.ABN || null,
+        //   orderNotes: '',
+        //   billingAddress: {
+        //     address: data.user.billingAddress.address,
+        //     city: data.user.billingAddress.city,
+        //     state: data.user.billingAddress.state,
+        //     zip: data.user.billingAddress.zip,
+        //     country: data.user.billingAddress.country,
+        //   },
+        //   deliveryAddress: data.user.deliveryAddress
+        //     ? {
+        //         address: data.user.deliveryAddress.address,
+        //         city: data.user.deliveryAddress.city,
+        //         state: data.user.deliveryAddress.state,
+        //         zip: data.user.deliveryAddress.zip,
+        //         country: data.user.deliveryAddress.country,
+        //       }
+        //     : null,
+        //   deliveryMethod: data.user.deliveryMethod || 'delivery', // Assuming deliveryMethod is part of data.user
+        // });
         
-        // Set delivery method
-        setDeliveryMethod(data.user.deliveryMethod || 'delivery');
+        // // Set delivery method
+        // setDeliveryMethod(data.user.deliveryMethod || 'delivery');
 
         // Save user info to sessionStorage
         login(data.user, data.token);
@@ -313,6 +313,7 @@ const Checkout = () => {
           setDefaultWeight(response.data.storeConfig.DefaultProductWeight || 0);
      
           setStoreZIP(response.data.storeConfig.StoreLocationZip);
+
         }
         setLoading(false);
       } catch (error) {
@@ -403,7 +404,7 @@ const Checkout = () => {
               // }
               setExpressDetails(response.data.AUS_PARCEL_EXPRESS);
               setRegularDetails(response.data.AUS_PARCEL_REGULAR);
-              console.log("response",response.data);
+              
               setDeliveryInfo(response.data.AUS_PARCEL_REGULAR.delivery_time);
               setShippingCost(parseFloat(response.data.AUS_PARCEL_REGULAR.total_cost));
               
@@ -751,7 +752,7 @@ const Checkout = () => {
             )}
           </div>
 
-          {billingInfo.deliveryMethod === 'delivery' && (
+          {/* {billingInfo.deliveryMethod === 'delivery' && (
             <section className="order-summary-shipping-service">
               <h2 className="order-summary-subtitle">SHIPPING SERVICE</h2>
               <Radio.Group
@@ -768,7 +769,7 @@ const Checkout = () => {
 
               {shippingService === 'express' ? (
               <p className="order-summary-text">
-                Shipped within 1 business day.  Guaranteed Next Business Day within the Express Post network
+                Shipped within 1 business day. Guaranteed Next Business Day within the Express Post network
               </p>
             ) : (
               <p className="order-summary-text">
@@ -782,7 +783,7 @@ const Checkout = () => {
                 </p>
                 )}
             </section>
-          )}
+          )} */}
         </div>
         <div className="order-summary-right-column">
           <div className="order-summary-cart-header">
@@ -829,11 +830,42 @@ const Checkout = () => {
               <span>AUD {total.toFixed(2)}</span>
             </div>
            
+     
             {billingInfo.deliveryMethod === 'delivery' && (
-              <div className="order-summary-summary-row">
-                <span>SHIPPING</span>
-                <span>AUD {shippingCost.toFixed(2)}</span>
-              </div>
+                <>
+                  <div className="order-summary-summary-row" style={{ flexDirection: 'column', gap: '10px' }}>
+                  
+                    <Radio.Group
+                      onChange={(e) => handleShippingService(e.target.value)}
+                      value={shippingService}
+                      className="order-summary-shipping-options"
+                      style={{ width: '100%' }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <Radio value="regular" style={{ padding: '8px', border: '1px solid #e8e8e8', borderRadius: '4px' }}>
+                          Regular (Parcel Post)
+                        </Radio>
+                        <Radio value="express" style={{ padding: '8px', border: '1px solid #e8e8e8', borderRadius: '4px' }}>
+                          Express (Express Post)
+                        </Radio>
+                      </div>
+                    </Radio.Group>
+                    <div className="order-summary-text" style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                      * {shippingService === 'express' 
+                          ? 'Shipped within 1 business day. Guaranteed Next Business Day within the Express Post network'
+                          : `Shipped within 1 business day. ${deliveryInfo}`}
+                    </div>
+                    {shippingCost > 40 && (
+                      <div className="order-summary-text" style={{ fontSize: '12px', color: '#666' }}>
+                        If you have any questions about shipping, you can call the store for advice: (03) 9551 7292
+                      </div>
+                    )}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                      <span>SHIPPING</span>
+                      <span>AUD {shippingCost.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </>
             )}
              {surcharge !== 0 && (<div className="order-summary-summary-row">
               <span>SURCHARGE ({surcharge || 0}%)</span>
@@ -940,7 +972,7 @@ const Checkout = () => {
                                     <p className="item-info">Size: {item.subDescription}</p>
                                   </div>
                                 )}
-                                <p className="item-price">${item.price}</p>
+                                <p className="item-price">${item.price.toFixed(2)}</p>
                               </div>
                               <div className="item-quantity">
                                 <button
@@ -1124,7 +1156,7 @@ const Checkout = () => {
                       // shipZip: billingInfo.deliveryAddress?.zip,
                       // shipCountry: billingInfo.deliveryAddress?.country,
                       // differentAddress: showDifferentAddress,
-                      deliveryMethod: deliveryMethod, // Set current delivery method
+                      deliveryMethod:billingInfo.deliveryMethod? billingInfo.deliveryMethod : 'delivery',
                     }}
                     form={form}
                   >

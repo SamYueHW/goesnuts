@@ -10,10 +10,13 @@ import { useParams, Link } from 'react-router-dom';
 import './ProductDetail.css';
 import { CartContext } from '../../contexts/CartContext';
 
+
 const { Meta } = Card;
 
 const ProductDetail = () => {
-    const { productId } = useParams();
+
+    const { productId, storeUrl } = useParams();
+    sessionStorage.setItem('storeUrl', storeUrl);
     const { cartItems, total, updateCartQuantity, removeFromCart, addToCart } = useContext(CartContext);
 
     const [product, setProduct] = useState(null);
@@ -21,7 +24,7 @@ const ProductDetail = () => {
    
     const [cartIndex, setCartIndex] = useState(null);
 
-    const [storeUrl, setStoreUrl] = useState(sessionStorage.getItem('storeUrl'));
+    // const [storeUrl, setStoreUrl] = useState(sessionStorage.getItem('storeUrl'));
     const [quantity, setQuantity] = useState(1);
 
     const headerRef = useRef(null);
@@ -74,79 +77,82 @@ const ProductDetail = () => {
     };
 
     useEffect(() => {
-        const fetchProduct = async () => {
+        const fetchStoreIdAndProduct = async () => {
             try {
-                const storeId = sessionStorage.getItem('storeId');
-                setStoreId(storeId);
-                const token = localStorage.getItem('jwtToken');
-                const response = await axios.get(`${process.env.REACT_APP_SERVER_URL}/fetchProductDetail/${storeId}/${productId}`, {
-                    headers: {
-                        Authorization: `Bearer ${token || ''}`,
-                    },
-                });
+                const response = await axios.get(`${process.env.REACT_APP_SERVER_URL}/fetchStoreId/${storeUrl}`);
                 if (response.status === 200) {
-                    const data = response.data.product;
-                    const related = response.data.relatedProducts;
-
-              
-
-                    if (response.data.isMember) {
-                        if (data.MemberPrice !== 0) {
-                            data.SalesPrice = data.MemberPrice;
-                            data.PackSalesPrice = data.MemberPackPrice;
-
-                            data.SalesPriceSubDescription = data.MemberPriceSubDescription;
-                            data.PackSalesPriceSubDescription = data.MemberPackPriceSubDescription;
-
-                            data.SalesPriceDeductStockQty = data.MemberPriceDeductStockQty;
-                            data.PackSalesPriceDeductStockQty = data.MemberPackPriceDeductStockQty;
-
-                            data.SalesPriceId = data.MemberPriceId;
-                            data.PackSalesPriceId = data.MemberPackPriceId;
-
-                            related.forEach((rel) => {
-                                rel.SalesPrice = rel.MemberPrice;
-                                rel.PackSalesPrice = rel.MemberPackPrice;
-                            });
-                        }
-                    }
-                    if (data.PackSalesPrice !== 0) {
-                        setMultiple(true);
-                    }
-                   
-                    setProduct(data);
-                    setRelatedProducts(related);
-                    setSelectedProduct({
-                        type: 0,
-                        id: productId,
-                        quantity: 1,
-                        price: data.SalesPrice,
-                        subDescription: data.SalesPriceSubDescription,
-                        deductQty: data.SalesPriceDeductStockQty,
-                        priceId: data.SalesPriceId,
-                        GSTRate: data.GSTRate,
-                        stockOnlineId: data.StockOnlineId,
-                        name: data.Description1,
-                        imgSrc: `${process.env.REACT_APP_SERVER_URL}/images/${storeId}/stockItems/${data.StockId}.jpg`, // 确保模板字符串正确使用
-                        tagId: data.TagId,
-                        packTagId: data.PackTagId,
-                        weight: data.Weight,
-                        packWeight: data.PackWeight,
+                    const fetchedStoreId = response.data.StoreId;
+                    sessionStorage.setItem('storeId', fetchedStoreId);
+                    setStoreId(fetchedStoreId);
+    
+                    // 在 storeId 设置后立即调用 fetchProduct
+                    const token = localStorage.getItem('jwtToken');
+                    const productResponse = await axios.get(`${process.env.REACT_APP_SERVER_URL}/fetchProductDetail/${fetchedStoreId}/${productId}`, {
+                        headers: {
+                            Authorization: `Bearer ${token || ''}`,
+                        },
                     });
-
-                    setLoading(false);
+                    if (productResponse.status === 200) {
+                        const data = productResponse.data.product;
+                        const related = productResponse.data.relatedProducts;
+    
+                        if (productResponse.data.isMember) {
+                            if (data.MemberPrice !== 0) {
+                                data.SalesPrice = data.MemberPrice;
+                                data.PackSalesPrice = data.MemberPackPrice;
+    
+                                data.SalesPriceSubDescription = data.MemberPriceSubDescription;
+                                data.PackSalesPriceSubDescription = data.MemberPackPriceSubDescription;
+    
+                                data.SalesPriceDeductStockQty = data.MemberPriceDeductStockQty;
+                                data.PackSalesPriceDeductStockQty = data.MemberPackPriceDeductStockQty;
+    
+                                data.SalesPriceId = data.MemberPriceId;
+                                data.PackSalesPriceId = data.MemberPackPriceId;
+    
+                                related.forEach((rel) => {
+                                    rel.SalesPrice = rel.MemberPrice;
+                                    rel.PackSalesPrice = rel.MemberPackPrice;
+                                });
+                            }
+                        }
+                        if (data.PackSalesPrice !== 0) {
+                            setMultiple(true);
+                        }
+    
+                        setProduct(data);
+                        setRelatedProducts(related);
+                        setSelectedProduct({
+                            type: 0,
+                            id: productId,
+                            quantity: 1,
+                            price: data.SalesPrice,
+                            subDescription: data.SalesPriceSubDescription,
+                            deductQty: data.SalesPriceDeductStockQty,
+                            priceId: data.SalesPriceId,
+                            GSTRate: data.GSTRate,
+                            stockOnlineId: data.StockOnlineId,
+                            name: data.Description1,
+                            imgSrc: `${process.env.REACT_APP_SERVER_URL}/images/${fetchedStoreId}/stockItems/${data.StockId}.jpg`,
+                            tagId: data.TagId,
+                            packTagId: data.PackTagId,
+                            weight: data.Weight,
+                            packWeight: data.PackWeight,
+                        });
+    
+                        setLoading(false);
+                    } else {
+                        console.error('Error fetching product: ', productResponse.data);
+                    }
                 }
-                else {
-                    console.error('Error fetching product: ', response.data);
-                }
-
             } catch (error) {
-                console.error('Error fetching product: ', error);
+                console.error('Error fetching store ID or product: ', error);
             }
-        }
-        fetchProduct();
-
-    }, [productId]);
+        };
+    
+        fetchStoreIdAndProduct();
+    }, [storeUrl, productId]);
+    
 
     if (loading) {
         return (
@@ -241,10 +247,11 @@ const ProductDetail = () => {
                                             <h3 className="product-title mb--20">{product.Description1}</h3>
                                             <p className="product-short-description mb--20">{product.Description2}</p>
                                             <div className="product-price-wrapper mb--25">
-                                                <span className="money">${selectedProduct.price}</span>
+                                            <span className="money">${selectedProduct.price.toFixed(2)}</span>
+
                                             </div>
                                             {/* 尺寸选择 */}
-                                            {multiple && (
+                                            {/* {multiple && ( */}
                                                 <form action="#" className="variation-form mb--20">
                                                     <div className="product-size-variations d-flex align-items-center mb--15">
                                                         {(product.SalesPriceSubDescription || product.PackSalesPriceSubDescription) && (
@@ -262,7 +269,7 @@ const ProductDetail = () => {
                                                                             </a>
                                                                         </div>
                                                                     )}
-                                                                    {product.PackSalesPriceSubDescription && (
+                                                                    {product.PackSalesPriceSubDescription && product.PackSalesPriceSubDescription!== "0" && (
                                                                         <div className="variation">
                                                                             <a
                                                                                 className={`product-size-variation-btn ${selectedProduct?.type === 1 ? 'selected' : ''}`}
@@ -277,7 +284,7 @@ const ProductDetail = () => {
                                                         )}
                                                     </div>
                                                 </form>
-                                            )}
+                                            {/* )} */}
 
                                             {/* 添加到购物车部分 */}
                                             <div className="product-action d-flex flex-sm-row align-items-sm-center flex-column align-items-start mb--30">
@@ -368,15 +375,17 @@ const ProductDetail = () => {
         <div className="related-products-sidebar">
             <div className="related-products-content">
                 {relatedProducts.slice(0, 5).map((relProduct) => (
-                    <Link
-                    to={`/product-details/${encodeURIComponent(relProduct.StockId)}/${encodeURIComponent(relProduct.Description1)}`}
+                 <Link
+                    to={`/shop/ChangHongHerbs/product-details/${encodeURIComponent(relProduct.StockId)}/${encodeURIComponent(relProduct.Description1)}`}
                     className="related-product-link"
-                    onClick={() => setLoading(true)} 
-                >
+                    onClick={() => setLoading(true)}
+                    >
+  
+               
                     <Card
                         hoverable
                         cover={
-                            <Link onClick={() => setLoading(true)}  to={`/product-details/${encodeURIComponent(relProduct.StockId)}/${encodeURIComponent(relProduct.Description1)}`}>
+                            <Link onClick={() => setLoading(true)}  to={`/shop/ChangHongHerbs/product-details/${encodeURIComponent(relProduct.StockId)}/${encodeURIComponent(relProduct.Description1)}`}>
                                 <img
                                     alt={relProduct.Description1}
                                     src={`${process.env.REACT_APP_SERVER_URL}/images/${storeId}/stockItems/${relProduct.StockId}.jpg`}
@@ -438,14 +447,14 @@ const ProductDetail = () => {
                                         {relatedProducts.map((relProduct) => (
                                             <Col xs={12} key={relProduct.id}>
                                                   <Link
-                                                    to={`/product-details/${encodeURIComponent(relProduct.StockId)}/${encodeURIComponent(relProduct.Description1)}`}
+                                                  to={`/shop/ChangHongHerbs/product-details/${encodeURIComponent(relProduct.StockId)}/${encodeURIComponent(relProduct.Description1)}`}
                                                     className="related-product-link"
                                                     onClick={() => setLoading(true)} 
                                                 >
                                                 <Card
                                                     hoverable
                                                     cover={
-                                                        <Link to={`/product/${relProduct.id}`}>
+                                                        <Link onClick={() => setLoading(true)}  to={`/shop/ChangHongHerbs/product-details/${encodeURIComponent(relProduct.StockId)}/${encodeURIComponent(relProduct.Description1)}`}>
                                                             <img
                                                                 alt={relProduct.Description1}
                                                                 src={`${process.env.REACT_APP_SERVER_URL}/images/${storeId}/stockItems/${relProduct.StockId}.jpg`}

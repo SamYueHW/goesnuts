@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef,useContext } from 'react';
 import { ShoppingCart, Menu, X, Trash2, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Modal, Form, Input, Button, Row, Col, Dropdown, Menu as AntMenu, message ,Select, Checkbox} from 'antd';
+import { Modal, Form, Input, Button, Row, Col, Dropdown, Menu as AntMenu, message ,Select, Checkbox, Upload} from 'antd';
 import axios from 'axios'; // 导入 axios
 import './Header.css';
 import { AuthContext } from '../../contexts/AuthContext';
@@ -83,7 +83,6 @@ export default function Header({   refreshPage}) {
     }
   };
 
- 
 
   const handleLogout = () => {
     localStorage.removeItem('jwtToken');
@@ -92,68 +91,23 @@ export default function Header({   refreshPage}) {
     logout();
     message.success('Logged out successfully');
 
-    // Refresh the page
-    window.location.reload();
-
-  
-  };
-
-  const refreshPrice = async (token) => {
-    if (!cartItems || cartItems.length === 0) {
-      console.log('No items in the cart to update.');
-      return;
-    }
-  
-    // Retrieve the token
-   
-    if (!token) {
-      console.error('Token is missing.');
-      return;
-    }
-   
-
-    // Prepare data for the API call
-    const cartItemIds = cartItems.map((item) => ({
-      stockId: item.id,
-      type: item.type,
-    }));
-  
-    
-  
-    const config = {
-      headers: {
-        authorization: `Bearer ${token}`,
-      },
-    };
-  
-    try {
-      const response = await axios.post(
-        `${process.env.REACT_APP_SERVER_URL}/fetchItemMemberPrice`,
-        { cartItemIds }, // Ensure the request body matches the backend expectations
-        config
-      );
-  
-      if (response.status === 200 && response.data.success) {
-        console.log('API response:', response.data);
-        
-        // Update cart items with new prices
-        const updatedCartItems = cartItems.map((item, index) => ({
-          ...item,
-          price: response.data.cartItems[index].memberPrice, // Ensure this matches backend output
-        }));
-        console.log('Updated cart items:', updatedCartItems);
-        // Update the cart state
-        resetCart(updatedCartItems);
-  
-        console.log('Updated cart items:', updatedCartItems);
-      } else {
-        console.error('Failed to update member prices:', response.data.message);
-      }
-    } catch (error) {
-      console.error('Error fetching member prices:', error);
+    // 检查refreshPage是否为函数
+    if (typeof refreshPage === 'function') {
+      setTimeout(() => {
+        refreshPage();
+      }, 1000);
+    } else {
+      // 如果refreshPage不是函数，则使用window.location.reload()刷新页面
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     }
   };
+
+
   
+  
+
 
   const fontHomePageUrl = process.env.REACT_APP_FONT_ONLINEORDER_URL;
 
@@ -199,12 +153,12 @@ export default function Header({   refreshPage}) {
           </div>
           <nav className={`header__nav ${isMenuOpen ? 'header__nav--open' : ''}`}>
             <ul className="header__nav-list">
-              <li className="header__nav-item"><a href="/home.html" className="header__nav-link">HOME</a></li>
+              <li className="header__nav-item"><a href="/" className="header__nav-link">HOME</a></li>
               <li className="header__nav-item">
                 <a href={`/shop/${storeUrl}`} className="header__nav-link">SHOP</a>
               </li>
               <li className="header__nav-item">
-                <a href={`/home.html#we-are-changhong`} className="header__nav-link">ABOUT US</a>
+                <a href={`/#we-are-changhong`} className="header__nav-link">ABOUT US</a>
               </li>
               <li className="header__nav-item">
                 <a href={`/contact-us/${storeUrl}`} className="header__nav-link">CONTACT US</a>
@@ -316,17 +270,15 @@ export default function Header({   refreshPage}) {
             
             hideLoginModal();
             message.success('Logged in successfully');
-            refreshPrice(token);
-            //wait for 10 seconds
-            setTimeout(() => {
-              refreshPage();
-            }, 1000);
-            // refreshPage();
-            // // wait for 2 seconds
-            // setTimeout(() => {
-            //   refreshPage();
-            // }, 6000);
             
+            // 检查refreshPage是否为函数
+            setTimeout(() => {
+              if (typeof refreshPage === 'function') {
+                refreshPage();
+              } else {
+                window.location.reload();
+              }
+            }, 1000);
           }}
         />
       </Modal>
@@ -344,7 +296,12 @@ export default function Header({   refreshPage}) {
             login(userData, token);
             hideRegisterModal();
             message.success('Registered and logged in successfully');
-            refreshPage();
+            // 检查refreshPage是否为函数
+            if (typeof refreshPage === 'function') {
+              refreshPage();
+            } else {
+              window.location.reload();
+            }
           }}
         />
       </Modal>
@@ -490,15 +447,65 @@ function RegisterForm({ onLogin, onSuccess }) {
   
   
   const [applyForMembership, setApplyForMembership] = useState(false);
+  const [certificateFile, setCertificateFile] = useState(null);
 
   const storeUrl = sessionStorage.getItem('storeUrl');
 
   const handleRegister = async (values) => {
     try {
       const storeId = JSON.parse(sessionStorage.getItem('storeId'));
-      const response = await axios.post( `${process.env.REACT_APP_SERVER_URL}/customerRegister`, { ...values, storeId }, {
-        headers: { 'Content-Type': 'application/json' },
+      
+      // 检查密码是否匹配
+      if (values.password !== values.confirmPassword) {
+        message.error('Passwords do not match!');
+        return;
+      }
+      
+      console.log('Password:', values.password);
+      console.log('Confirm Password:', values.confirmPassword);
+      console.log('Passwords match?', values.password === values.confirmPassword);
+      
+      // 检查是否需要上传证书
+      if (values.applyForMembership && !certificateFile) {
+        message.error('Please upload your certificate for membership application!');
+        return;
+      }
+      
+      // 创建FormData对象，用于文件上传
+      const formData = new FormData();
+      
+      // 直接添加密码和确认密码字段，确保它们是完全相同的值
+      formData.append('password', values.password);
+      formData.append('confirmPassword', values.password); // 使用相同的值
+      
+      // 添加其他表单字段到FormData
+      Object.keys(values).forEach(key => {
+        // 跳过已处理的密码字段
+        if (key !== 'password' && key !== 'confirmPassword' && key !== 'certificateFile') {
+          // 特殊处理布尔值
+          if (typeof values[key] === 'boolean') {
+            formData.append(key, values[key] ? 'true' : 'false');
+          } else {
+            formData.append(key, values[key] === undefined ? '' : values[key]);
+          }
+        }
       });
+      
+      // 添加storeId
+      formData.append('storeId', storeId);
+      
+      // 如果有证书文件，添加到FormData
+      if (certificateFile) {
+        formData.append('certificateFile', certificateFile);
+      }
+      
+      const response = await axios.post(
+        `${process.env.REACT_APP_SERVER_URL}/customerRegister`, 
+        formData, 
+        {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        }
+      );
 
       const data = response.data;
       if (response.data.isApplyForMembership) {
@@ -522,6 +529,38 @@ function RegisterForm({ onLogin, onSuccess }) {
         message.error('Registration failed');
       }
     }
+  };
+
+  // 处理文件上传
+  const handleFileChange = (info) => {
+    if (info.file.status === 'done') {
+      message.success(`${info.file.name} file uploaded successfully`);
+      setCertificateFile(info.file.originFileObj);
+    } else if (info.file.status === 'error') {
+      message.error(`${info.file.name} file upload failed.`);
+    } else if (info.file.status === 'removed') {
+      setCertificateFile(null);
+    }
+  };
+
+  // 文件上传前的验证
+  const beforeUpload = (file) => {
+    // 检查文件类型
+    const isImage = file.type.startsWith('image/');
+    if (!isImage) {
+      message.error('You can only upload image files!');
+      return Upload.LIST_IGNORE;
+    }
+    
+    // 检查文件大小，限制为5MB
+    const isLt5M = file.size / 1024 / 1024 < 5;
+    if (!isLt5M) {
+      message.error('Image must be smaller than 5MB!');
+      return Upload.LIST_IGNORE;
+    }
+    
+    setCertificateFile(file);
+    return false; // 返回false阻止自动上传
   };
 
   return (
@@ -656,6 +695,7 @@ function RegisterForm({ onLogin, onSuccess }) {
             { required: true, message: 'Please confirm your password!' },
             ({ getFieldValue }) => ({
               validator(_, value) {
+                // 使用严格相等比较
                 if (!value || getFieldValue('password') === value) {
                   return Promise.resolve();
                 }
@@ -664,7 +704,7 @@ function RegisterForm({ onLogin, onSuccess }) {
             }),
           ]}
         >
-          <Input.Password placeholder="Confirm Password"  style = {{ alignItems: 'center'}}/>
+          <Input.Password placeholder="Confirm Password" style={{ alignItems: 'center'}}/>
         </Form.Item>
       </Col>
       </Row>
@@ -683,6 +723,7 @@ function RegisterForm({ onLogin, onSuccess }) {
                 associationName: undefined,
                 associationID: undefined,
               });
+              setCertificateFile(null);
             }
           }}
         >
@@ -712,6 +753,30 @@ function RegisterForm({ onLogin, onSuccess }) {
               </Form.Item>
             </Col>
           </Row>
+          <Form.Item
+            name="certificateFile"
+            label="Upload Certificate"
+            rules={[{ required: true, message: 'Please upload your certificate!' }]}
+          >
+            <Upload
+              name="certificateFile"
+              listType="picture"
+              className="upload-list-inline"
+              maxCount={1}
+              beforeUpload={beforeUpload}
+              onChange={handleFileChange}
+              customRequest={({ file, onSuccess }) => {
+                // 模拟上传成功
+                setTimeout(() => {
+                  onSuccess("ok");
+                }, 0);
+              }}
+              accept="image/*"
+            >
+              <Button>Select File</Button>
+              <span style={{ marginLeft: 8 }}>Upload your certificate (image format, max: 5MB)</span>
+            </Upload>
+          </Form.Item>
         </>
       )}
 
@@ -772,6 +837,7 @@ function ForgotPasswordForm({ onBack, onSuccess }) {
   const [cooldown, setCooldown] = useState(0); // 冷却倒计时
   const [isCodeSent, setIsCodeSent] = useState(false); // 检查是否已发送验证码
   const [isVerifying, setIsVerifying] = useState(false); // 检查是否正在验证验证码
+  const [showEmailTip, setShowEmailTip] = useState(false); // 显示邮件提示
 
   // 使用 useEffect 进行倒计时处理
   useEffect(() => {
@@ -790,21 +856,44 @@ function ForgotPasswordForm({ onBack, onSuccess }) {
       }
 
       setIsSendingCode(true);
+      
+      console.log('Sending verification code to:', email);
+      console.log('API URL:', `${process.env.REACT_APP_SERVER_URL}/forgot-password`);
 
       const response = await axios.post(`${process.env.REACT_APP_SERVER_URL}/forgot-password`, { email }, {
         headers: { 'Content-Type': 'application/json' },
       });
 
+      console.log('API response:', response.data);
+
       // 如果后端返回非 2xx 状态码，axios 会抛出错误
       setCooldown(30); // 设置冷却时间为30秒
       setIsCodeSent(true); // 设置验证码已发送
+      setShowEmailTip(true); // 显示邮件提示
       message.success('Verification code sent to your email.');
 
     } catch (error) {
-      if (error.response && error.response.data && error.response.data.message) {
-        message.error(error.response.data.message);
+      console.error('Error sending verification code:', error);
+      
+      if (error.response) {
+        // 服务器返回了响应，但状态码不是2xx
+        console.error('Response error data:', error.response.data);
+        console.error('Response error status:', error.response.status);
+        console.error('Response error headers:', error.response.headers);
+        
+        if (error.response.data && error.response.data.message) {
+          message.error(error.response.data.message);
+        } else {
+          message.error(`Failed to send verification code: ${error.response.status}`);
+        }
+      } else if (error.request) {
+        // 请求已发送，但没有收到响应
+        console.error('No response received:', error.request);
+        message.error('No response from server. Please check your network connection.');
       } else {
-        message.error('Failed to send verification code');
+        // 在设置请求时发生了错误
+        console.error('Request error:', error.message);
+        message.error(`Error: ${error.message}`);
       }
     } finally {
       setIsSendingCode(false);
@@ -827,15 +916,34 @@ function ForgotPasswordForm({ onBack, onSuccess }) {
         headers: { 'Content-Type': 'application/json' },
       });
 
+      console.log('API response:', response.data);
+
       // 如果后端返回非 2xx 状态码，axios 会抛出错误
       message.success('Password has been reset successfully!');
       onSuccess(); // 调用成功后的回调
 
     } catch (error) {
-      if (error.response && error.response.data && error.response.data.message) {
-        message.error(error.response.data.message);
+      console.error('Error resetting password:', error);
+      
+      if (error.response) {
+        // 服务器返回了响应，但状态码不是2xx
+        console.error('Response error data:', error.response.data);
+        console.error('Response error status:', error.response.status);
+        console.error('Response error headers:', error.response.headers);
+        
+        if (error.response.data && error.response.data.message) {
+          message.error(error.response.data.message);
+        } else {
+          message.error(`Failed to reset password: ${error.response.status}`);
+        }
+      } else if (error.request) {
+        // 请求已发送，但没有收到响应
+        console.error('No response received:', error.request);
+        message.error('No response from server. Please check your network connection.');
       } else {
-        message.error('Failed to reset password');
+        // 在设置请求时发生了错误
+        console.error('Request error:', error.message);
+        message.error(`Error: ${error.message}`);
       }
     } finally {
       setIsVerifying(false);
@@ -858,11 +966,32 @@ function ForgotPasswordForm({ onBack, onSuccess }) {
           { type: 'email', message: 'Please enter a valid email!' },
         ]}
       >
-        <Input placeholder="Your Email" disabled={isCodeSent} />
+        <Row gutter={8}>
+          <Col flex="auto">
+            <Input placeholder="Your Email" />
+          </Col>
+          <Col>
+            <Button
+              type="primary"
+              onClick={handleSendCode}
+              disabled={cooldown > 0 || isSendingCode}
+              loading={isSendingCode}
+            >
+              {cooldown > 0 ? `${cooldown}s` : 'Send Code'}
+            </Button>
+          </Col>
+        </Row>
       </Form.Item>
 
-      {/* 发送验证码 */}
-      {isCodeSent ? (
+      {showEmailTip && (
+        <Form.Item>
+          <div style={{ color: '#1890ff', marginBottom: '10px', fontSize: '14px' }}>
+            If you don't receive the email, please check your spam/junk folder.
+          </div>
+        </Form.Item>
+      )}
+
+      {isCodeSent && (
         <>
           {/* 输入验证码 */}
           <Form.Item
@@ -912,17 +1041,6 @@ function ForgotPasswordForm({ onBack, onSuccess }) {
             </Button>
           </Form.Item>
         </>
-      ) : (
-        <Form.Item>
-          <Button
-            type="primary"
-            onClick={handleSendCode}
-            disabled={cooldown > 0 || isSendingCode}
-            block
-          >
-            {cooldown > 0 ? `Send Code (${cooldown}s)` : 'Send Verification Code'}
-          </Button>
-        </Form.Item>
       )}
 
       <Form.Item>

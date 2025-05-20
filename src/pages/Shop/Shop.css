@@ -256,15 +256,29 @@
 .blank-space {
   height: 90px;
 }
+/* 禁用浏览器的自动滚动行为 */
+html, body {
+  scroll-behavior: auto !important;
+}
+
+/* 确保 .container1 的滚动行为正确 */
 
 .container1 {
   padding-top: 100px;
-  /* 左右留空白 */
+  padding-left: 15px;
+  padding-right: 15px;
+  max-height: calc(100vh - 90px);
+  overflow-y: auto;
+  scroll-behavior: auto !important; /* 禁用平滑滚动，避免干扰 */
+}
+
+/* .container1 {
+  padding-top: 100px;
   padding-left: 15px;
   padding-right: 15px;
   max-height: calc(100vh - 90px); 
   overflow-y: auto;
-}
+} */
 
 .page_t1 .icon {
   width: 92px;

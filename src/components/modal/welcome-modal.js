@@ -77,7 +77,7 @@ const WelcomeModal = () => {
                     <X size={24} />
                   </button>
                 </div>
-                <p className="mt-4 text-gray-600">
+                <p className="mt-4 text-gray-600" style={{ textAlign: "justify" }}>
                   We're excited to announce the launch of our brand-new website! To ensure the best experience, we kindly ask all our valued practitioners to re-register for access to exclusive content. As part of our improved system, re-registration is required, and your account will be reviewed and approved by our team.
                 </p>
                 <button

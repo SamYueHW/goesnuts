@@ -412,7 +412,7 @@ async function authenticateStore(store_id, storeAppId) {
             socket.emit('login', { success: 1, message: 'Login success'});
 
             //登录成功后，从数据库里查看是否有发送失败的order，进行循环发送
-            const orders = await executeDb('SELECT * FROM orders WHERE StoreId = ? AND Success = 0 AND Paid != 0', [store_id], { fetchAll: true });
+            const orders = await executeDb('SELECT * FROM orders WHERE StoreId = ? AND Success = 0', [store_id], { fetchAll: true });
             for (const order of orders) {
               const orderId = order.OrderId;
               const orderItemsQuery = 'SELECT * FROM orderitems WHERE OrderId = ?';
@@ -801,7 +801,8 @@ app.post('/customerLogin', async (req, res) => {
     }
 
     const customerResults = results[0];
-  
+    console.log("Password input:", password);
+    console.log("Stored password hash:", customerResults.Password);
     
 
     // Verify password
@@ -994,7 +995,7 @@ app.post('/registerMember', async (req, res) => {
       ${certificatePath ? `<p>Medical certificate has been uploaded. You can find it at: ${certificatePath}</p>` : ''}
     `;
     
-    await AliYunSendEmail(recipientEmail, subject, htmlContent);
+    //await AliYunSendEmail(recipientEmail, subject, htmlContent);
 
     res.json({ success: true, message: 'Member registered' });
 
@@ -1228,42 +1229,6 @@ app.post('/contactUs', async (req, res) => {
 });
 
 
-// 证书上传配置
-const certificateStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    // 创建临时目录
-    const tempDir = path.join(__dirname, 'uploads', 'temp');
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
-    }
-    cb(null, tempDir);
-  },
-  filename: function (req, file, cb) {
-    // 生成唯一文件名
-    const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, uniqueName + path.extname(file.originalname));
-  }
-});
-
-const certificateUpload = multer({
-  storage: certificateStorage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-  fileFilter: function (req, file, cb) {
-    // 只接受图片文件
-    if (!file.mimetype.startsWith('image/')) {
-      return cb(new Error('只允许上传图片文件！'));
-    }
-    cb(null, true);
-  }
-});
-
-// 确保证书目录存在
-if (!fs.existsSync(path.join(__dirname, 'uploads', 'temp'))) {
-  fs.mkdirSync(path.join(__dirname, 'uploads', 'temp'), { recursive: true });
-}
-if (!fs.existsSync(path.join(__dirname, 'uploads', 'certificates'))) {
-  fs.mkdirSync(path.join(__dirname, 'uploads', 'certificates'), { recursive: true });
-}
 // Register Endpoint
 app.post('/customerRegister', certificateUpload.single('certificateFile'), async (req, res) => {
   let tempFilePath = null;
@@ -1298,25 +1263,11 @@ app.post('/customerRegister', certificateUpload.single('certificateFile'), async
     }
 
     if (password !== confirmPassword) {
-      // 打印调试信息
-      console.log('Server received password:', password);
-      console.log('Server received confirmPassword:', confirmPassword);
-      console.log('Types:', typeof password, typeof confirmPassword);
-      console.log('Equality check:', password === confirmPassword);
-      console.log('String equality check:', String(password) === String(confirmPassword));
-      
-      // 使用String()确保类型一致
-      if (String(password) === String(confirmPassword)) {
-        console.log('密码实际上是匹配的，继续处理');
-      } else {
-        // 如果文件已上传，删除临时文件
-        if (tempFilePath && fs.existsSync(tempFilePath)) {
-          fs.unlinkSync(tempFilePath);
-        }
-        return res.status(400).json({ message: 'Passwords do not match' });
+      // 如果文件已上传，删除临时文件
+      if (tempFilePath && fs.existsSync(tempFilePath)) {
+        fs.unlinkSync(tempFilePath);
       }
-    } else {
-      console.log('密码匹配，继续处理');
+      return res.status(400).json({ message: 'Passwords do not match' });
     }
 
     // Input validation: check presence and length
@@ -3631,8 +3582,8 @@ app.get('/getStoreLogo/:storeUrl', async (req, res) => {
        
         if (decoded.storeAdmin) {
           const ausCurrentTime = moment().tz('Australia/Melbourne').format('YYYY-MM-DD 23:59:59');
-          //one year ago
-          const twoWeekAgo = moment().tz('Australia/Melbourne').subtract(365, 'days').format('YYYY-MM-DD 00:00:00');
+          //two week ago
+          const twoWeekAgo = moment().tz('Australia/Melbourne').subtract(14, 'days').format('YYYY-MM-DD 00:00:00');
           const storeInformation = {storeId: decoded.storeId, adminEmail: decoded.email, adminId: decoded.cusId};
           // 执行查询，获取订单、客户和订单项的数据
           const selectQuery = `
@@ -5297,7 +5248,36 @@ app.get('/certificate-image/:storeId/:customerId', (req, res) => {
   }
 });
 
+// 证书上传配置
+const certificateStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    // 创建临时目录
+    const tempDir = path.join(__dirname, 'uploads', 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    cb(null, tempDir);
+  },
+  filename: function (req, file, cb) {
+    // 生成唯一文件名
+    const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, uniqueName + path.extname(file.originalname));
+  }
+});
 
+const certificateUpload = multer({
+  storage: certificateStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: function (req, file, cb) {
+    // 只接受图片文件
+    if (!file.mimetype.startsWith('image/')) {
+      return cb(new Error('只允许上传图片文件！'));
+    }
+    cb(null, true);
+  }
+});
 
-
-// Register Endpoint
+// 确保证书目录存在
+if (!fs.existsSync(path.join(__dirname, 'uploads', 'certificates'))) {
+  fs.mkdirSync(path.join(__dirname, 'uploads', 'certificates'), { recursive: true });
+}

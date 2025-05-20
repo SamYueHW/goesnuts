@@ -4,7 +4,7 @@ import { Modal, Button, Form, Input, notification } from 'antd';
 import { LockOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
-const ChangePasswordModal = ({ visible, setVisible, cusId }) => {
+const ChangePasswordModal = ({ open, setVisible, cusId }) => {
   const [form] = Form.useForm();
   
   const handleChangePassword = async (values) => {
@@ -64,7 +64,7 @@ const ChangePasswordModal = ({ visible, setVisible, cusId }) => {
   return (
     <Modal
       title="Change Password"
-      open={visible}
+      open={open}
       onCancel={handleCancel}
       footer={[
         <Button key="back" onClick={handleCancel}>

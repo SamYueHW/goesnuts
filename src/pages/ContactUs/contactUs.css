@@ -118,6 +118,8 @@
   display: flex;
   justify-content: space-between;
   gap: 20px;
+  padding-left: 17px;
+        padding-right: 17px;
 }
 
 .form-group-half {

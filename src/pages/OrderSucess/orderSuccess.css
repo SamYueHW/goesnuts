@@ -64,6 +64,31 @@
     color: #666;
   }
   
+  .email-tip {
+    margin: 15px auto;
+    max-width: 600px;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+    padding: 12px 15px;
+    border-left: 4px solid #59ab02f2;
+  }
+  
+  .email-tip__text {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    color: #555;
+    margin: 0;
+  }
+  
+  .email-tip__icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+    color: #59ab02f2;
+    flex-shrink: 0;
+  }
+  
   .order-confirmation__order-number,
   .order-confirmation__date {
     text-align: center;
@@ -202,4 +227,3 @@
     margin-right: 10px;
     margin-bottom: 3px;
   }
-

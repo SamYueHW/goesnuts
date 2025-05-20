@@ -30,7 +30,7 @@ const AuthProvider = ({ children }) => {
     if (token) {
       const userData = JSON.parse(localStorage.getItem('user'));
      
-      if (userData){
+      if (userData && userData.billingAddress && userData.deliveryAddress){
         if (userData.billingAddress.address !== user.deliveryAddress.address) {
           console.log('billing address is different from delivery address');
           sessionStorage.setItem('showDifferentAddress', true);
@@ -45,6 +45,93 @@ const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const refreshNonMemberPrice = async () => {
+    if (!cartItems || cartItems.length === 0) {
+      
+      return;
+    }
+    const cartItemIds = cartItems.map((item) => ({
+      stockId: item.id,
+      type: item.type,
+    }));
+    const storeId = JSON.parse(sessionStorage.getItem('storeId'));
+    try {
+      const response = await axios.post( `${process.env.REACT_APP_SERVER_URL}/fetchItemNonMemberPrice`, { cartItemIds, storeId }, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (response.status === 200 && response.data.success) {
+        console.log('response.data:', response.data);
+        const updatedCartItems = cartItems.map((item, index) => ({
+          ...item,
+          price: response.data.cartItems[index].nonMemberPrice,
+        }));
+        resetCart(updatedCartItems);
+      } else {
+        console.error('Failed to update non-member prices:', response.data.message);
+      }
+    } catch (error) {
+      console.error('Error fetching non-member prices:', error);
+    }
+  };
+
+  const refreshPrice = async (token) => {
+    if (!cartItems || cartItems.length === 0) {
+      console.log('No items in the cart to update.');
+      return;
+    }
+  
+    // Retrieve the token
+   
+    if (!token) {
+      console.error('Token is missing.');
+      return;
+    }
+   
+
+    // Prepare data for the API call
+    const cartItemIds = cartItems.map((item) => ({
+      stockId: item.id,
+      type: item.type,
+    }));
+  
+    
+  
+    const config = {
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+    };
+  
+    try {
+      const response = await axios.post(
+        `${process.env.REACT_APP_SERVER_URL}/fetchItemMemberPrice`,
+        { cartItemIds }, // Ensure the request body matches the backend expectations
+        config
+      );
+  
+      if (response.status === 200 && response.data.success) {
+       
+        
+        // Update cart items with new prices
+        const updatedCartItems = cartItems.map((item, index) => ({
+          ...item,
+          price: response.data.cartItems[index].memberPrice, // Ensure this matches backend output
+        }));
+        
+        // Update the cart state
+        resetCart(updatedCartItems);
+  
+       
+      } else {
+        console.error('Failed to update member prices:', response.data.message);
+      }
+    } catch (error) {
+      console.error('Error fetching member prices:', error);
+    }
+  };
+  
+
   // Define the login function
   const login = async (userData, token) => {
     try {
@@ -53,7 +140,7 @@ const AuthProvider = ({ children }) => {
       setUser(userData);
       localStorage.setItem('jwtToken', token);
       localStorage.setItem('user', JSON.stringify(userData));
-      console.log('userData:', userData);
+      refreshPrice(token);
      
      
     } catch (error) {
@@ -109,6 +196,8 @@ const AuthProvider = ({ children }) => {
     sessionStorage.removeItem('billingInfo');
 
     sessionStorage.removeItem('showDifferentAddress');
+
+    refreshNonMemberPrice();
    
   };
 

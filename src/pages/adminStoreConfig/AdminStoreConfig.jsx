@@ -293,6 +293,7 @@ const AdminStoreConfig = () => {
           length: parcel.Length,
           width: parcel.Width,
           height: parcel.Height,
+          extraCharge: parcel.ExtraCharge || 0,
         }));
        
         setParcelSetting(parcelSetting);
@@ -1166,26 +1167,39 @@ const AdminStoreConfig = () => {
                               </Form.Item>
                             </Col>
                             <Col span={6}>
+                              <Form.Item
+                                {...field}
+                                name={[field.name, 'extraCharge']}
+                                fieldKey={[field.fieldKey, 'extraCharge']}
+                                label="Extra Charge ($)"
+                                initialValue={0}
+                                rules={[{ required: true, message: 'Please input extra charge!' }]}
+                              >
+                                <InputNumber style={{ width: '100%' }} min={0} step={0.01} />
+                              </Form.Item>
+                            </Col>
+                          </Row>
+                          <Row gutter={16} align="middle">
+                            <Col span={24} style={{ textAlign: 'right', marginTop: '10px' }}>
                               {fields.length > 0 && (
-
                                 <Button
-                                type="danger"
-                                onClick={() => {
-                                  Modal.confirm({
-                                    title: 'Are you sure?',
-                                    content:
-                                      'This action cannot be undone.',
-                                    okText: 'Yes, delete',
-                                    cancelText: 'Cancel',
-                                    okButtonProps: { danger: true }, // 确认按钮显示为危险样式
-                                    onOk: () => {
-                                      remove(field.name); // 执行删除逻辑
-                                    },
-                                  });
-                                }}
-                                icon={<MinusCircleOutlined />}
+                                  type="danger"
+                                  onClick={() => {
+                                    Modal.confirm({
+                                      title: 'Are you sure?',
+                                      content:
+                                        'This action cannot be undone.',
+                                      okText: 'Yes, delete',
+                                      cancelText: 'Cancel',
+                                      okButtonProps: { danger: true }, // 确认按钮显示为危险样式
+                                      onOk: () => {
+                                        remove(field.name); // 执行删除逻辑
+                                      },
+                                    });
+                                  }}
+                                  icon={<MinusCircleOutlined />}
                                 >
-                                Remove Parcel
+                                  Remove Parcel
                                 </Button>
                               )}
                             </Col>

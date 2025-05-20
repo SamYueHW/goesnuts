@@ -172,7 +172,7 @@ const CustomerAccount = () => {
       
 
         try {
-            console.log('editedCustomer!');
+          
             // const response = await axios.post(`${process.env.REACT_APP_SERVER_URL}/updateCustomerAccount`, editedCustomer, {
             //     headers: {
             //         Authorization: `Bearer ${token}`,

@@ -19,7 +19,7 @@ const PrivacyPolicy = () => {
             <div className="breadcrumb-wrapper">
                 <Breadcrumb>
                 <Breadcrumb.Item>
-                <a href="/home.html" >
+                <a href="/" >
                     <HomeOutlined />
                     <span style={{ marginLeft: "6px" }}>Home</span>
                 </a>
