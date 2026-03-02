@@ -13,6 +13,13 @@
 /public
 build.zip
 
+# 忽略 build 文件夹
+build/
+
+
+*.zip
+
+
 # misc
 .DS_Store
 
