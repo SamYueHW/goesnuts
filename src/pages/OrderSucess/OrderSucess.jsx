@@ -67,9 +67,8 @@ const OrderSuccess  = () => {
             navigate(`/shop/${storeUrl}`);
           }
         };
-        //延迟3秒，获取订单信息
-        const timer = setTimeout(() => fetchOrder(), 3000);
-        return () => clearTimeout(timer);
+        // Fetch order immediately (no delay)
+        fetchOrder();
       } catch (error) {
         console.error('Error fetching order:', error);
         setLoading(false);
@@ -171,10 +170,10 @@ const OrderSuccess  = () => {
               <span>Subtotal</span>
               <span>${orderData?.itemDetails.reduce((acc, item) => acc + item.price * item.quantity, 0).toFixed(2)}</span>
             </div>
-            <div className="order-confirmation__total-row">
+            {/* <div className="order-confirmation__total-row">
               <span>Shipping & Handling</span>
               <span>${orderData?.freight.toLocaleString()}</span>
-            </div>
+            </div> */}
             <div className="order-confirmation__total-row">
               <span>Surcharge</span>
               <span>${orderData?.surcharge.toLocaleString()}</span>
@@ -216,7 +215,7 @@ const OrderSuccess  = () => {
         </div>
         </>
         )}
-        <div className="order-confirmation__section order-confirmation__payment">
+        {/* <div className="order-confirmation__section order-confirmation__payment">
           <h2 className="order-confirmation__section-title">
             <DollarOutlined className='order-confirmation-img'></DollarOutlined> PAYMENT DETAILS
           </h2>
@@ -226,7 +225,7 @@ const OrderSuccess  = () => {
               {orderData?.paymentId}
             </p>
 
-        </div>
+        </div> */}
   
       </div>
       

@@ -101,7 +101,7 @@ const { Store } = require('lucide-react');
 
 
 app.use(cors({
- origin: ['https://chineseherbswholesaler.com.au','https://enrichpos.com.au','https://backend.chineseherbswholesaler.com.au','http://localhost:3000',],
+ origin: ['https://branchorder.enrichpos.com.au','https://chineseherbswholesaler.com.au','https://enrichpos.com.au','https://backend.chineseherbswholesaler.com.au','http://localhost:3000',],
  
   credentials: true, 
 }));
@@ -210,6 +210,26 @@ async function executeReportDb(query, values = null, options = { fetchAll: false
   } finally {
     connection.release(); // 释放连接回连接池
   }
+}
+
+// Calculate shipping cost with discount tiers
+function calculateShippingWithDiscount(baseShipping, orderTotal, discountTiers) {
+  if (!discountTiers || !Array.isArray(discountTiers) || discountTiers.length === 0) {
+    return baseShipping;
+  }
+  
+  // Sort tiers from highest to lowest threshold
+  const sortedTiers = discountTiers.sort((a, b) => b.threshold - a.threshold);
+  
+  // Find the highest tier that the order qualifies for
+  for (const tier of sortedTiers) {
+    if (orderTotal >= tier.threshold) {
+      const discountedShipping = baseShipping - tier.discount;
+      return Math.max(0, discountedShipping); // Ensure shipping never goes below 0
+    }
+  }
+  
+  return baseShipping;
 }
 
 
@@ -435,14 +455,16 @@ async function authenticateStore(store_id, storeAppId) {
                 const { CustomerId, Paid, StripePaymentId, Surcharge, Notes, Freight, DeliveryMethod } = orderResults;
                 const customerQuery = 'SELECT * FROM customers WHERE CustomerId = ?';
                 const customerResults = await executeDb(customerQuery, [CustomerId], { fetchOne: true });
-                const { CustomerEmail, CustomerSurname, CustomerMiddleName, CustomerLastName, CustomerPhone, ABN, Address, Suburb, State, PostCode, Country, DeliveryAddress, DeliverySuburb, DeliveryState, DeliveryPostCode, DeliveryCountry } = customerResults;
+                const { CustomerEmail, CustomerSurname, CustomerMiddleName, CustomerLastName, CustomerPhone, ABN, Address, Suburb, State, PostCode, Country, DeliveryAddress, DeliverySuburb, DeliveryState, DeliveryPostCode, DeliveryCountry, CustomCustomerId } = customerResults;
 
+                // 如果 CustomCustomerId 不为 null，使用它；否则使用 CustomerId
+                const displayCustomerId = CustomCustomerId ? CustomCustomerId : "ZA"+CustomerId;
 
                 const orderDetail = {
                   onlineOrderId: orderId,
-                  onlineCustomerId: "ZA"+CustomerId,
-                  paid: Paid,
-                  paymentMethod: "Stripe",
+                  onlineCustomerId: displayCustomerId,
+                  paid: 0,
+                  paymentMethod: null,
                   paymentId: StripePaymentId? StripePaymentId : "",
                   surcharge: Surcharge,
                   freight: Freight,
@@ -450,7 +472,7 @@ async function authenticateStore(store_id, storeAppId) {
                   itemDetails: cartItems,
                   deliveryMethod: DeliveryMethod,
                   customer: {
-                    onlineCustomerId: "ZA"+CustomerId,
+                    onlineCustomerId: displayCustomerId,
                     customerName: `${CustomerSurname} ${CustomerMiddleName ? CustomerMiddleName + ' ' : ''}${CustomerLastName}`,
                     mobile: CustomerPhone,
                     email:CustomerEmail,
@@ -551,7 +573,10 @@ async function authenticateStore(store_id, storeAppId) {
           const {  Paid, StripePaymentId, Surcharge, Notes, Freight } = fetchOrderResults[0];
           const customerQuery = 'SELECT * FROM customers WHERE CustomerId = ?';
           const customerResults = await executeDb(customerQuery, [CustomerId], { fetchOne: true });
-          const { CustomerEmail, CustomerSurname, CustomerMiddleName, CustomerLastName, CustomerPhone, ABN, Address, Suburb, State, PostCode, Country, DeliveryAddress, DeliverySuburb, DeliveryState, DeliveryPostCode, DeliveryCountry } = customerResults;
+          const { CustomerEmail, CustomerSurname, CustomerMiddleName, CustomerLastName, CustomerPhone, ABN, Address, Suburb, State, PostCode, Country, DeliveryAddress, DeliverySuburb, DeliveryState, DeliveryPostCode, DeliveryCountry, CustomCustomerId } = customerResults;
+          
+          // 如果 CustomCustomerId 不为 null，使用它；否则使用 CustomerId
+          const displayCustomerId = CustomCustomerId ? CustomCustomerId : "ZA"+CustomerId;
           
           const orderTime = moment(fetchOrderResults[0].CreatedAt).format('YYYY-MM-DD HH:mm:ss');
           const storeUrlQuery = 'SELECT StoreUrl FROM stores WHERE StoreId = ?';
@@ -561,18 +586,18 @@ async function authenticateStore(store_id, storeAppId) {
             storeUrl: storeUrlResults.StoreUrl,
             storeId: shopId,
             onlineOrderId: onlineOrderId,
-            onlineCustomerId: CustomerId,
+            onlineCustomerId: displayCustomerId,
             //localTime melbourne
             orderTime: orderTime,
-            paid: Paid,
-            paymentMethod: "Stripe",
+            paid: 0,
+            paymentMethod: null,
             paymentId: StripePaymentId,
             surcharge: Surcharge,
             freight: Freight,
             orderNotes: Notes,
             itemDetails: cartItems,
             customer: {
-              onlineCustomerId: "ZA"+ CustomerId,
+              onlineCustomerId: displayCustomerId,
               customerName: `${CustomerSurname} ${CustomerMiddleName ? CustomerMiddleName + ' ' : ''}${CustomerLastName}`,
               mobile: CustomerPhone,
               email:CustomerEmail,
@@ -724,11 +749,49 @@ app.post ('/updateStockItem', async (req, res) => {
   // Category: 'ANIMAL PRODUCT 动物药'
   try{
 
-  const { SalesPriceSubDescription, PackSalesPriceSubDescription, PackSalesPrice,  MemberPackPrice, PackTagId, StockOnlineId, StockId, Description1, Description2,  SalesPrice, MemberPrice, GSTRate, BarCode, Notes, Enable, StoreId, Category, TagId, Weight, PackWeight } = req.body;
-  console.log('updateStockItem', req.body);
-  const updateStockItemQuery = 'UPDATE stockitem SET SalesPriceSubDescription= ?, PackSalesPriceSubDescription= ?, PackSalesPrice= ?,  MemberPackPrice= ?, PackTagId = ?, StockId = ?, Description1 = ?, Description2 = ?, SalesPrice = ?, MemberPrice = ?, GSTRate = ?, BarCode = ?, Notes = ?, Enable = ?, Category = ?, TagId = ?, Weight = ?, PackWeight = ? WHERE StockOnlineId = ? AND StoreId = ?';
+  // Support both camelCase and PascalCase for stockOnlineId
+  const { SalesPriceSubDescription, PackSalesPriceSubDescription, PackSalesPrice,  MemberPackPrice, PackTagId, StockOnlineId, stockOnlineId, StockId, Description1, Description2,  SalesPrice, MemberPrice, GSTRate, BarCode, Notes, Enable, StoreId, Category, TagId, Weight, PackWeight, OutOfStock } = req.body;
+  
+  // Use either StockOnlineId or stockOnlineId
+  const finalStockOnlineId = StockOnlineId || stockOnlineId;
+  
+  if (!finalStockOnlineId) {
+    return res.json({ success: false, message: 'StockOnlineId is required' });
+  }
+  
+  // Build dynamic query based on provided fields
+  let updateFields = [];
+  let updateValues = [];
+  
+  if (SalesPriceSubDescription !== undefined) { updateFields.push('SalesPriceSubDescription = ?'); updateValues.push(SalesPriceSubDescription); }
+  if (PackSalesPriceSubDescription !== undefined) { updateFields.push('PackSalesPriceSubDescription = ?'); updateValues.push(PackSalesPriceSubDescription); }
+  if (PackSalesPrice !== undefined) { updateFields.push('PackSalesPrice = ?'); updateValues.push(PackSalesPrice); }
+  if (MemberPackPrice !== undefined) { updateFields.push('MemberPackPrice = ?'); updateValues.push(MemberPackPrice); }
+  if (PackTagId !== undefined) { updateFields.push('PackTagId = ?'); updateValues.push(PackTagId); }
+  if (StockId !== undefined) { updateFields.push('StockId = ?'); updateValues.push(StockId); }
+  if (Description1 !== undefined) { updateFields.push('Description1 = ?'); updateValues.push(Description1); }
+  if (Description2 !== undefined) { updateFields.push('Description2 = ?'); updateValues.push(Description2); }
+  if (SalesPrice !== undefined) { updateFields.push('SalesPrice = ?'); updateValues.push(SalesPrice); }
+  if (MemberPrice !== undefined) { updateFields.push('MemberPrice = ?'); updateValues.push(MemberPrice); }
+  if (GSTRate !== undefined) { updateFields.push('GSTRate = ?'); updateValues.push(GSTRate); }
+  if (BarCode !== undefined) { updateFields.push('BarCode = ?'); updateValues.push(BarCode); }
+  if (Notes !== undefined) { updateFields.push('Notes = ?'); updateValues.push(Notes); }
+  if (Enable !== undefined) { updateFields.push('Enable = ?'); updateValues.push(Enable); }
+  if (Category !== undefined) { updateFields.push('Category = ?'); updateValues.push(Category); }
+  if (TagId !== undefined) { updateFields.push('TagId = ?'); updateValues.push(TagId); }
+  if (Weight !== undefined) { updateFields.push('Weight = ?'); updateValues.push(Weight); }
+  if (PackWeight !== undefined) { updateFields.push('PackWeight = ?'); updateValues.push(PackWeight); }
+  if (OutOfStock !== undefined) { updateFields.push('OutOfStock = ?'); updateValues.push(OutOfStock); }
+  
+  if (updateFields.length === 0) {
+    return res.json({ success: false, message: 'No fields to update' });
+  }
+  
+  // Update without StoreId requirement for simple updates
+  const updateStockItemQuery = `UPDATE stockitem SET ${updateFields.join(', ')} WHERE StockOnlineId = ?`;
+  updateValues.push(finalStockOnlineId);
 
-  await executeDb(updateStockItemQuery, [SalesPriceSubDescription, PackSalesPriceSubDescription, PackSalesPrice,  MemberPackPrice, PackTagId, StockId, Description1, Description2,  SalesPrice, MemberPrice, GSTRate, BarCode, Notes, Enable, Category, TagId, Weight, PackWeight, StockOnlineId, StoreId]);
+  await executeDb(updateStockItemQuery, updateValues);
   res.json({ success: true, message: 'Stock item updated' });  
 } catch (error) {
     console.error('Error updating stock item:', error);
@@ -1068,7 +1131,7 @@ app.post('/fetchItemNonMemberPrice', async (req, res) => {
         return item; // Return unchanged item if no type match
       })
     );
-    console.log('updatedCartItems', updatedCartItems);
+   
     res.json({ success: true, cartItems: updatedCartItems });
   } catch (error) {
     console.error('Error fetching non-member prices:', error);
@@ -1589,19 +1652,19 @@ app.post('/reset-password', async (req, res) => {
 
       if (isValid) { 
         try {
-          const deleteQuery = 'DELETE FROM Category WHERE StoreId = ?';
+          const deleteQuery = 'DELETE FROM category WHERE StoreId = ?';
           await executeDb(deleteQuery, [shopId], { commit: true });
           
           for (const Category of categories) {
             const { cateId, category} = Category;
-            const selectQuery = 'SELECT * FROM Category WHERE StoreId = ? AND Category = ?';
+            const selectQuery = 'SELECT * FROM category WHERE StoreId = ? AND Category = ?';
             const results = await executeDb(selectQuery, [shopId, category], { fetchAll: true });
             if (results.length > 0) {
-              const updateQuery = 'UPDATE Category SET CateId = ? WHERE StoreId = ? AND Category = ?';
+              const updateQuery = 'UPDATE category SET CateId = ? WHERE StoreId = ? AND Category = ?';
               await executeDb(updateQuery, [cateId, shopId, category], { commit: true });
             } else {
 
-              const query = 'INSERT INTO Category (StoreId, Category, CateId) VALUES (?, ?, ?)';
+              const query = 'INSERT INTO category (StoreId, Category, CateId) VALUES (?, ?, ?)';
               await executeDb(query, [shopId, category, cateId], { commit: true });
             }
           }
@@ -1653,15 +1716,15 @@ app.post('/reset-password', async (req, res) => {
 
       if (isValid) { 
         try {
-            const selectQuery = 'SELECT * FROM StockItem WHERE StoreId = ? AND StockId = ?';
+            const selectQuery = 'SELECT * FROM stockitem WHERE StoreId = ? AND StockId = ?';
             const results = await executeDb(selectQuery, [shopId, stockId], { fetchAll: true });
             if (results.length > 0) {
-              const updateQuery = 'UPDATE StockItem SET Category = ?, Description1 = ?, Description2 = ?, Description3 = ?, Description4 = ?, SalesPrice = ?, SalesPriceSubDescription = ?, SalesPriceDeductStockQty = ?, SalesPriceId = ?,MemberPriceSubDescription= ?,MemberPriceDeductStockQty = ?, MemberPriceId = ?, MemberPrice = ?, PackSalesPrice = ?,  PackSalesPriceSubDescription = ?,  PackSalesPriceDeductStockQty = ?, PackSalesPriceId = ?, MemberPackPrice = ?, MemberPackPriceSubDescription = ?, MemberPackPriceDeductStockQty = ?, MemberPackPriceId = ?, GSTRate = ?, Barcode = ?, Notes = ?, Enable = ? WHERE StoreId = ? AND StockId = ?';
+              const updateQuery = 'UPDATE stockitem SET Category = ?, Description1 = ?, Description2 = ?, Description3 = ?, Description4 = ?, SalesPrice = ?, SalesPriceSubDescription = ?, SalesPriceDeductStockQty = ?, SalesPriceId = ?,MemberPriceSubDescription= ?,MemberPriceDeductStockQty = ?, MemberPriceId = ?, MemberPrice = ?, PackSalesPrice = ?,  PackSalesPriceSubDescription = ?,  PackSalesPriceDeductStockQty = ?, PackSalesPriceId = ?, MemberPackPrice = ?, MemberPackPriceSubDescription = ?, MemberPackPriceDeductStockQty = ?, MemberPackPriceId = ?, GSTRate = ?, Barcode = ?, Notes = ?, Enable = ? WHERE StoreId = ? AND StockId = ?';
               await executeDb(updateQuery, [category, description1, description2, description3, description4, salesPrice, salesPriceSubDescription, salesPriceDeductStockQty, salesPriceId, memberPriceSubDescription, memberPriceDeductStockQty, memberPriceId, finalMemberPrice, packSalesPrice, packSalesPriceSubDescription, packSalesPriceDeductStockQty, packSalesPriceId, finalMemberPackPrice, memberPackPriceSubDescription, memberPackPriceDeductStockQty, memberPackPriceId, gstRate, barCode, notes, enable, shopId, stockId], { commit: true });
             } else {
    
               const query = `
-              INSERT INTO StockItem (
+              INSERT INTO stockitem (
                   StoreId, StockId, Category, Description1, Description2, Description3, Description4,
                   SalesPrice, MemberPrice, GSTRate, Barcode, Notes, SalesPriceId, SalesPriceSubDescription,
                   SalesPriceDeductStockQty, MemberPriceId, MemberPriceSubDescription, MemberPriceDeductStockQty,
@@ -2680,7 +2743,7 @@ app.post('/placeOrder', async (req, res) => {
             quantity: 1,
           }],
           mode: 'payment',
-          success_url: `${process.env.REACT_APP_FONT_ONLINEORDER_URL}/order-success/${storeUrl}/${encryptedOrderId}`,
+          success_url: `${process.env.REACT_APP_FONT_ONLINEORDER_URL}/order-processing/${storeUrl}/${encryptedOrderId}`,
           cancel_url: `${process.env.REACT_APP_FONT_ONLINEORDER_URL}/checkout/${storeUrl}/${encryptedOrderId}`,
           metadata: {
             storeId: storeId,
@@ -2818,35 +2881,18 @@ app.post('/placeNoPayOrder', async (req, res) => {
         `;
         await executeDb(orderItemInsertQuery, [storeId, stockId, stockOnlineId, quantity, price, gstRate, orderId, priceId, deductQty, subDescription]);
       }
-      orderPromises[orderId] = {};  // 初始化为一个空对象
 
-      orderPromises[orderId].promise = new Promise((resolve, reject) => {
-          orderPromises[orderId].resolve = resolve;
-          orderPromises[orderId].reject = reject;
-      });
-
-
-    try {
-      
-      await handlePaymentSuccess(storeId, orderId, null, 0);
-
-
-    // Wait for the client to confirm the order or timeout after 10 seconds
-    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Confirmation timeout')), 10000));
-
-      await Promise.race([orderPromises[orderId].promise, timeout]);
-      const encryptedOrderId = await encrypt(orderId.toString());
-      delete orderPromises[orderId];
-       
-         
-          // 如果成功，发送响应
-      res.json({ url: `${process.env.REACT_APP_FONT_ONLINEORDER_URL}/order-success/${storeUrl}/${encryptedOrderId}` });
-      
-
+      // 发送订单到 POS 系统（不等待确认）
+      try {
+        await handlePaymentSuccess(storeId, orderId, null, 0);
       } catch (error) {
-        console.error('Error creating Stripe Checkout session:', error);
-        res.status(500).send('An error occurred');
+        console.error('Error sending order to POS:', error);
+        // 即使发送失败，订单也已经创建，继续返回成功
       }
+
+      // 直接返回成功，不等待 POS 确认
+      const encryptedOrderId = await encrypt(orderId.toString());
+      res.json({ url: `${process.env.REACT_APP_FONT_ONLINEORDER_URL}/order-success/${storeUrl}/${encryptedOrderId}` });
 
     } catch (error) {
       console.error('Order error:', error);
@@ -2911,14 +2957,16 @@ async function handlePaymentSuccess(storeId, orderId, stripePaymentId, amount) {
     const { CustomerId, Paid, StripePaymentId, Surcharge, Notes, Freight, DeliveryMethod } = orderResults;
     const customerQuery = 'SELECT * FROM customers WHERE CustomerId = ?';
     const customerResults = await executeDb(customerQuery, [CustomerId], { fetchOne: true });
-    const { CustomerEmail, CustomerSurname, CustomerMiddleName, CustomerLastName, CustomerPhone, ABN, Address, Suburb, State, PostCode, Country, DeliveryAddress, DeliverySuburb, DeliveryState, DeliveryPostCode, DeliveryCountry } = customerResults;
+    const { CustomerEmail, CustomerSurname, CustomerMiddleName, CustomerLastName, CustomerPhone, ABN, Address, Suburb, State, PostCode, Country, DeliveryAddress, DeliverySuburb, DeliveryState, DeliveryPostCode, DeliveryCountry, CustomCustomerId } = customerResults;
 
+    // 如果 CustomCustomerId 不为 null，使用它；否则使用 CustomerId
+    const displayCustomerId = CustomCustomerId ? CustomCustomerId : "ZA"+CustomerId;
 
     const orderDetail = {
       onlineOrderId: orderId,
-      onlineCustomerId: "ZA"+CustomerId,
-      paid: Paid,
-      paymentMethod: "Stripe",
+      onlineCustomerId: displayCustomerId,
+      paid: 0,
+      paymentMethod: null,
       paymentId: StripePaymentId? StripePaymentId : "",
       surcharge: Surcharge,
       freight: Freight,
@@ -2926,7 +2974,7 @@ async function handlePaymentSuccess(storeId, orderId, stripePaymentId, amount) {
       itemDetails: cartItems,
       deliveryMethod: DeliveryMethod,
       customer: {
-        onlineCustomerId: "ZA"+CustomerId,
+        onlineCustomerId: displayCustomerId,
         customerName: `${CustomerSurname} ${CustomerMiddleName ? CustomerMiddleName + ' ' : ''}${CustomerLastName}`,
         mobile: CustomerPhone,
         email:CustomerEmail,
@@ -3019,6 +3067,19 @@ app.post('/stripe-webhook', express.raw({type: 'application/json'}), async (requ
       const storeId = request.body.data.object.metadata.storeId;
       const amount = request.body.data.object.amount_total / 100;
 
+      console.log(`Payment successful for order ${orderId}, store ${storeId}, amount ${amount}`);
+
+      // Update order status to paid
+      try {
+        await executeDb(
+          'UPDATE orders SET OrderStatus = ?, Paid = ?, StripePaymentId = ? WHERE OrderId = ?',
+          ['paid', amount, stripePaymentId, orderId]
+        );
+        console.log(`Order ${orderId} marked as paid`);
+      } catch (error) {
+        console.error(`Error updating order ${orderId}:`, error);
+      }
+
       // 处理支付成功的逻辑
       await handlePaymentSuccess(storeId, orderId, stripePaymentId, amount);
       break;
@@ -3038,6 +3099,31 @@ app.post('/stripe-webhook', express.raw({type: 'application/json'}), async (requ
   }
   
   response.status(200).send({received: true});
+});
+
+app.get('/checkOrderStatus/:encryptedOrderId', async (req, res) => {
+  try {
+    const { encryptedOrderId } = req.params;
+    const orderId = await decrypt(encryptedOrderId);
+    const orderIdInt = parseInt(orderId, 10);
+    
+    const orderQuery = 'SELECT OrderStatus, Paid, StripePaymentId FROM orders WHERE OrderId = ?';
+    const orderResults = await executeDb(orderQuery, [orderIdInt], { fetchOne: true });
+    
+    if (orderResults) {
+      res.status(200).json({
+        success: true,
+        orderStatus: orderResults.OrderStatus,
+        paid: orderResults.Paid,
+        stripePaymentId: orderResults.StripePaymentId
+      });
+    } else {
+      res.status(404).json({ success: false, message: 'Order not found' });
+    }
+  } catch (error) {
+    console.error('Error checking order status:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
 });
 
 app.get('/fetchOrder/:encryptedOrderId', async (req, res) => {
@@ -3330,16 +3416,53 @@ app.post('/admin-create-user', async (req, res) => {
         return res.status(401).json({ success: false, message: 'Unauthorized' });
       }
       if (decoded.storeAdmin) {
-       
-        const { CustomerSurname, CustomerMiddleName, CustomerLastName , StoreId, Password, CustomerEmail, IsMember,CustomerPhone} = req.body;
-    
-        const hashedPassword = await bcrypt.hash(Password, 10);
-        const query = `
-          INSERT INTO customers (CustomerSurname, CustomerMiddleName, CustomerLastName, StoreId, Password,CustomerEmail, IsMember, CustomerPhone) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `;
-        await executeDb(query, [CustomerSurname, CustomerMiddleName, CustomerLastName, decoded.storeId, hashedPassword,CustomerEmail, IsMember, CustomerPhone]);
-        res.status(200).json({ success: true, message: 'User created successfully' });
+        try {
+          const { CustomerSurname, CustomerMiddleName, CustomerLastName , StoreId, Password, CustomerEmail, IsMember, CustomerPhone, CustomCustomerId } = req.body;
+      
+          // 如果提供了自定义 CustomCustomerId，检查该 ID 在该 store 中是否已存在
+          if (CustomCustomerId) {
+            const checkQuery = 'SELECT CustomerId FROM customers WHERE CustomCustomerId = ? AND StoreId = ?';
+            const existingCustomer = await executeDb(checkQuery, [CustomCustomerId, decoded.storeId]);
+            
+            if (existingCustomer.length > 0) {
+              return res.status(409).json({ success: false, message: 'Custom Customer ID already exists in this store' });
+            }
+          }
+
+          const hashedPassword = await bcrypt.hash(Password, 10);
+          
+          // CustomerId 由数据库自动生成，CustomCustomerId 是可选的自定义字段
+          let query, params;
+          if (CustomCustomerId) {
+            query = `
+              INSERT INTO customers (CustomerSurname, CustomerMiddleName, CustomerLastName, StoreId, Password, CustomerEmail, IsMember, CustomerPhone, CustomCustomerId) 
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+            params = [CustomerSurname, CustomerMiddleName, CustomerLastName, decoded.storeId, hashedPassword, CustomerEmail, IsMember, CustomerPhone, CustomCustomerId];
+          } else {
+            query = `
+              INSERT INTO customers (CustomerSurname, CustomerMiddleName, CustomerLastName, StoreId, Password, CustomerEmail, IsMember, CustomerPhone) 
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+            params = [CustomerSurname, CustomerMiddleName, CustomerLastName, decoded.storeId, hashedPassword, CustomerEmail, IsMember, CustomerPhone];
+          }
+          
+          await executeDb(query, params);
+          res.status(200).json({ success: true, message: 'User created successfully' });
+        } catch (error) {
+          console.error('Error creating user:', error);
+          
+          // 处理重复邮箱错误
+          if (error.code === 'ER_DUP_ENTRY') {
+            if (error.sqlMessage.includes('CustomerEmail')) {
+              return res.status(409).json({ success: false, message: 'Email address already exists' });
+            } else if (error.sqlMessage.includes('CustomCustomerId')) {
+              return res.status(409).json({ success: false, message: 'Custom Customer ID already exists in this store' });
+            }
+          }
+          
+          return res.status(500).json({ success: false, message: 'Internal server error' });
+        }
       } else {
         res.status(401).json({ success: false, message: 'Unauthorized' });
       }
@@ -3812,7 +3935,18 @@ app.get('/fetchStoreConfig/:storeId', async (req, res) => {
     const storeConfigQuery = 'SELECT * FROM store_online_information WHERE StoreId = ?';
     const storeConfigResult = await executeDb(storeConfigQuery, [storeId], { fetchOne: true });
    
-
+    // Parse ShippingDiscountTiers JSON if it exists
+    if (storeConfigResult && storeConfigResult.ShippingDiscountTiers) {
+      try {
+        if (typeof storeConfigResult.ShippingDiscountTiers === 'string') {
+          storeConfigResult.ShippingDiscountTiers = JSON.parse(storeConfigResult.ShippingDiscountTiers);
+        }
+      } catch (e) {
+        storeConfigResult.ShippingDiscountTiers = [];
+      }
+    } else if (storeConfigResult) {
+      storeConfigResult.ShippingDiscountTiers = [];
+    }
 
     res.status(200).json({ success: true, storeConfig: storeConfigResult });
   } catch (error) {
@@ -3841,6 +3975,25 @@ app.get('/fetchStoreConfigAdmin', async (req, res) => {
         if (decoded.storeAdmin) {
           const storeConfigQuery = 'SELECT * FROM store_online_information WHERE StoreId = ?';
           const storeConfigResult = await executeDb(storeConfigQuery, [decoded.storeId], { fetchOne: true });
+          
+          // 如果没有查询到结果，直接返回错误
+          if (!storeConfigResult) {
+            return res.status(404).json({ success: false, message: 'Store configuration not found' });
+          }
+          
+          // Parse ShippingDiscountTiers JSON if it exists
+          if (storeConfigResult.ShippingDiscountTiers) {
+            try {
+              if (typeof storeConfigResult.ShippingDiscountTiers === 'string') {
+                storeConfigResult.ShippingDiscountTiers = JSON.parse(storeConfigResult.ShippingDiscountTiers);
+              }
+            } catch (e) {
+              storeConfigResult.ShippingDiscountTiers = [];
+            }
+          } else {
+            storeConfigResult.ShippingDiscountTiers = [];
+          }
+          
           const promotionImageUrl = path.join(__dirname, `../public/images/${decoded.storeId}/promotion1.jpg`);
           const promotionImageUrl2 = path.join(__dirname, `../public/images/${decoded.storeId}/promotion2.jpg`);
           const promotionImageUrl3 = path.join(__dirname, `../public/images/${decoded.storeId}/promotion3.jpg`);
@@ -4123,9 +4276,15 @@ app.post('/updateStoreConfig', async (req, res) => {
           }
             
          
-          const updateStoreConfigQuery = 'UPDATE store_online_information SET DefaultProductUnit = ?, ShippingRate = ?, SurchargeDescription = ?,StoreLocationZip = ?, Surcharge = ?, EnableAuPost = ?, DefaultProductLength = ?, DefaultProductWidth = ?, DefaultProductHeight = ?, DefaultProductWeight = ?, FreeShippingLimit = ? , RecipientEmail = ? , StoreName = ?, MondayStart = ?, MondayEnd = ?, TuesdayStart = ?, TuesdayEnd = ?, WednesdayStart = ?, WednesdayEnd = ?, ThursdayStart = ?, ThursdayEnd = ?, FridayStart = ?, FridayEnd = ?, SaturdayStart = ?, SaturdayEnd = ?, SundayStart = ?, SundayEnd = ?, MondayBreakStart = ?, MondayBreakEnd = ?, TuesdayBreakStart = ?, TuesdayBreakEnd = ?, WednesdayBreakStart = ?, WednesdayBreakEnd = ?, ThursdayBreakStart = ?, ThursdayBreakEnd = ?, FridayBreakStart = ?, FridayBreakEnd = ?, SaturdayBreakStart = ?, SaturdayBreakEnd = ?, SundayBreakStart= ?, SundayBreakEnd = ? WHERE StoreId = ?';
+          // Prepare ShippingDiscountTiers JSON
+          let shippingDiscountTiersJSON = null;
+          if (storeConfig.shippingDiscountTiers && Array.isArray(storeConfig.shippingDiscountTiers) && storeConfig.shippingDiscountTiers.length > 0) {
+            shippingDiscountTiersJSON = JSON.stringify(storeConfig.shippingDiscountTiers);
+          }
+          
+          const updateStoreConfigQuery = 'UPDATE store_online_information SET DefaultProductUnit = ?, ShippingRate = ?, SurchargeDescription = ?,StoreLocationZip = ?, Surcharge = ?, EnableAuPost = ?, DefaultProductLength = ?, DefaultProductWidth = ?, DefaultProductHeight = ?, DefaultProductWeight = ?, FreeShippingLimit = ? , RecipientEmail = ? , StoreName = ?, ShippingDiscountTiers = ?, MondayStart = ?, MondayEnd = ?, TuesdayStart = ?, TuesdayEnd = ?, WednesdayStart = ?, WednesdayEnd = ?, ThursdayStart = ?, ThursdayEnd = ?, FridayStart = ?, FridayEnd = ?, SaturdayStart = ?, SaturdayEnd = ?, SundayStart = ?, SundayEnd = ?, MondayBreakStart = ?, MondayBreakEnd = ?, TuesdayBreakStart = ?, TuesdayBreakEnd = ?, WednesdayBreakStart = ?, WednesdayBreakEnd = ?, ThursdayBreakStart = ?, ThursdayBreakEnd = ?, FridayBreakStart = ?, FridayBreakEnd = ?, SaturdayBreakStart = ?, SaturdayBreakEnd = ?, SundayBreakStart= ?, SundayBreakEnd = ? WHERE StoreId = ?';
          
-          await executeDb(updateStoreConfigQuery, [storeConfig.DefaultProductUnit, storeConfig.shippingRate, storeConfig.SurchargeDescrip, storeConfig.StoreLocationZip, storeConfig.SurchargeRate, EnableAUPost, storeConfig.productLength, storeConfig.productWidth, storeConfig.productHeight, storeConfig.DefaultProductWeight, storeConfig.freeShippingLimit, storeConfig.RecipientEmail, storeConfig.StoreName, 
+          await executeDb(updateStoreConfigQuery, [storeConfig.DefaultProductUnit, storeConfig.shippingRate, storeConfig.SurchargeDescrip, storeConfig.StoreLocationZip, storeConfig.SurchargeRate, EnableAUPost, storeConfig.productLength, storeConfig.productWidth, storeConfig.productHeight, storeConfig.DefaultProductWeight, storeConfig.freeShippingLimit, storeConfig.RecipientEmail, storeConfig.StoreName, shippingDiscountTiersJSON, 
             storeConfig.MondayStart,
             storeConfig.MondayEnd,
             storeConfig.TuesdayStart,
@@ -4201,33 +4360,37 @@ app.get('/getLatestUpdates/:storeUrl', async (req, res) => {
     const latestUpdatesQuery = 'SELECT PromotionSubtitle1, PromotionText1, PromotionSubtitle2, PromotionText2, PromotionSubtitle3, PromotionText3, PromotionSubtitle4, PromotionText4 FROM store_online_information WHERE StoreId = ?';
     const latestUpdatesResults = await executeDb(latestUpdatesQuery, [storeId], { fetchOne: true });
     const updates = [];
-    if (latestUpdatesResults.PromotionSubtitle1) {
-      updates.push({
-        subtitle: latestUpdatesResults.PromotionSubtitle1,
-        text: latestUpdatesResults.PromotionText1,
-        imgUrl: `images/${storeId}/promotion1.jpg`,
-      });
-    }
-    if (latestUpdatesResults.PromotionSubtitle2) {
-      updates.push({
-        subtitle: latestUpdatesResults.PromotionSubtitle2,
-        text: latestUpdatesResults.PromotionText2,
-        imgUrl: `images/${storeId}/promotion2.jpg`,
-      });
-    }
-    if (latestUpdatesResults.PromotionSubtitle3) {
-      updates.push({
-        subtitle: latestUpdatesResults.PromotionSubtitle3,
-        text: latestUpdatesResults.PromotionText3,
-        imgUrl: `images/${storeId}/promotion3.jpg`,
-      });
-    }
-    if (latestUpdatesResults.PromotionSubtitle4) {
-      updates.push({
-        subtitle: latestUpdatesResults.PromotionSubtitle4,
-        text: latestUpdatesResults.PromotionText4,
-        imgUrl: `images/${storeId}/promotion4.jpg`,
-      });
+    
+    // Check if latestUpdatesResults exists before accessing its properties
+    if (latestUpdatesResults) {
+      if (latestUpdatesResults.PromotionSubtitle1) {
+        updates.push({
+          subtitle: latestUpdatesResults.PromotionSubtitle1,
+          text: latestUpdatesResults.PromotionText1,
+          imgUrl: `images/${storeId}/promotion1.jpg`,
+        });
+      }
+      if (latestUpdatesResults.PromotionSubtitle2) {
+        updates.push({
+          subtitle: latestUpdatesResults.PromotionSubtitle2,
+          text: latestUpdatesResults.PromotionText2,
+          imgUrl: `images/${storeId}/promotion2.jpg`,
+        });
+      }
+      if (latestUpdatesResults.PromotionSubtitle3) {
+        updates.push({
+          subtitle: latestUpdatesResults.PromotionSubtitle3,
+          text: latestUpdatesResults.PromotionText3,
+          imgUrl: `images/${storeId}/promotion3.jpg`,
+        });
+      }
+      if (latestUpdatesResults.PromotionSubtitle4) {
+        updates.push({
+          subtitle: latestUpdatesResults.PromotionSubtitle4,
+          text: latestUpdatesResults.PromotionText4,
+          imgUrl: `images/${storeId}/promotion4.jpg`,
+        });
+      }
     }
    
     res.status(200).json({ success: true, updates:updates });
@@ -4861,21 +5024,23 @@ app.post('/resend-order', async (req, res) => {
     const { CustomerId, Paid, StripePaymentId, Surcharge, Notes, Freight } = orderResults;
     const customerQuery = 'SELECT * FROM customers WHERE CustomerId = ?';
     const customerResults = await executeDb(customerQuery, [CustomerId], { fetchOne: true });
-    const { CustomerEmail, CustomerSurname, CustomerMiddleName, CustomerLastName, CustomerPhone, ABN, Address, Suburb, State, PostCode, Country, DeliveryAddress, DeliverySuburb, DeliveryState, DeliveryPostCode, DeliveryCountry } = customerResults;
+    const { CustomerEmail, CustomerSurname, CustomerMiddleName, CustomerLastName, CustomerPhone, ABN, Address, Suburb, State, PostCode, Country, DeliveryAddress, DeliverySuburb, DeliveryState, DeliveryPostCode, DeliveryCountry, CustomCustomerId } = customerResults;
 
+    // 如果 CustomCustomerId 不为 null，使用它；否则使用 CustomerId
+    const displayCustomerId = CustomCustomerId ? CustomCustomerId : "ZA"+CustomerId;
 
     const orderDetail = {
       onlineOrderId: orderId,
-      onlineCustomerId: "ZA"+CustomerId,
-      paid: Paid,
-      paymentMethod: "Stripe",
+      onlineCustomerId: displayCustomerId,
+      paid: 0,
+      paymentMethod: null,
       paymentId: StripePaymentId,
       surcharge: Surcharge,
       freight: Freight,
       orderNotes: Notes,
       itemDetails: cartItems,
       customer: {
-        onlineCustomerId: "ZA"+CustomerId,
+        onlineCustomerId: displayCustomerId,
         customerName: `${CustomerSurname} ${CustomerMiddleName ? CustomerMiddleName + ' ' : ''}${CustomerLastName}`,
         mobile: CustomerPhone,
         email:CustomerEmail,
@@ -5255,7 +5420,7 @@ app.use((err, req, res, next) => {
 
 
 
-  const PORT = 5060; //外部是5052公开，转发入5053
+  const PORT = 5062; //外部是5052公开，转发入5053
   server.listen(PORT, () => {
 
     console.log(` Server running on port ${PORT}`);

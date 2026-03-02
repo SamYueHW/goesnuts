@@ -42,6 +42,7 @@ const AdminList = () => {
   const [createForm] = Form.useForm();
   const [editForm] = Form.useForm(); // Separate form for editing
   const [searchText, setSearchText] = useState('');
+  const [useCustomId, setUseCustomId] = useState(false); // State for custom ID checkbox
 
   // Fetch User List
   const fetchUserList = async () => {
@@ -190,7 +191,8 @@ const AdminList = () => {
         CustomerPhone: values.phone,
         IsMember: values.isMember ? 1 : 0,
         StoreId: storeId,
-        Password: '0000', // Default password
+        Password: values.password || '0000', // Use provided password or default
+        CustomCustomerId: values.useCustomId ? values.customId : null, // Include custom custom ID if provided
       };
 
       const response = await axios.post(
@@ -206,7 +208,13 @@ const AdminList = () => {
         });
         setCreateUserModalVisible(false);
         createForm.resetFields();
+        setUseCustomId(false); // Reset custom ID checkbox
         fetchUserList(); // Refresh the user list
+      } else if (response.status === 409) {
+        notification.error({
+          message: 'Error',
+          description: 'Custom Customer ID already exists in this store',
+        });
       } else {
         notification.error({
           message: 'Error',
@@ -215,10 +223,17 @@ const AdminList = () => {
       }
     } catch (error) {
       console.error(error);
-      notification.error({
-        message: 'Error',
-        description: 'Failed to create user',
-      });
+      if (error.response && error.response.status === 409) {
+        notification.error({
+          message: 'Error',
+          description: 'Custom Customer ID already exists in this store',
+        });
+      } else {
+        notification.error({
+          message: 'Error',
+          description: error.response?.data?.message || 'Failed to create user',
+        });
+      }
     }
   };
 
@@ -490,7 +505,11 @@ const AdminList = () => {
       <Modal
         title="Create New User"
         open={createUserModalVisible}
-        onCancel={() => setCreateUserModalVisible(false)}
+        onCancel={() => {
+          setCreateUserModalVisible(false);
+          setUseCustomId(false);
+          createForm.resetFields();
+        }}
         onOk={() => {
           createForm
             .validateFields()
@@ -502,63 +521,103 @@ const AdminList = () => {
             });
         }}
         okText="Create"
+        width={600}
       >
         <Form
           form={createForm}
           layout="vertical"
           name="create_user_form"
-          initialValues={{ password: '0000' }} // Set default password
+          initialValues={{ password: '0000' }}
         >
+          {/* Custom ID Checkbox */}
           <Form.Item
-            name="firstName"
-            label="First Name"
-            rules={[{ required: true, message: 'Please input the first name!' }]}
+            name="useCustomId"
+            valuePropName="checked"
           >
-            <Input placeholder="First Name" />
+            <Checkbox onChange={(e) => setUseCustomId(e.target.checked)}>
+              Use Custom Customer ID
+            </Checkbox>
           </Form.Item>
 
-          <Form.Item
-            name="middleName"
-            label="Middle Name"
-          >
-            <Input placeholder="Middle Name" />
-          </Form.Item>
-
-          <Form.Item
-            name="lastName"
-            label="Last Name"
-            rules={[{ required: true, message: 'Please input the last name!' }]}
-          >
-            <Input placeholder="Last Name" />
-          </Form.Item>
-
-          <Form.Item
-            name="email"
-            label="Email Address"
-            rules={[
-              { required: true, message: 'Please input the email address!' },
-              { type: 'email', message: 'Please enter a valid email!' }
-            ]}
-          >
-            <Input placeholder="Email Address" />
-          </Form.Item>
-
-          
-          <Form.Item
-            name="phone"
-            label="Mobile Number"
-          
+          {/* Custom ID Input - only show when checkbox is checked */}
+          {useCustomId && (
+            <Form.Item
+              name="customId"
+              label="Custom Customer ID"
+              rules={[
+                { required: true, message: 'Please input the custom customer ID!' },
+                { max: 50, message: 'Customer ID cannot exceed 50 characters!' }
+              ]}
             >
-            <Input />
+              <Input placeholder="Enter Custom Customer ID (letters and numbers)" />
+            </Form.Item>
+          )}
 
-          </Form.Item>
+          <Divider style={{ margin: '12px 0' }} />
+
+          {/* Name fields in one row */}
+          <Row gutter={16}>
+            <Col xs={24} sm={8}>
+              <Form.Item
+                name="firstName"
+                label="First Name"
+                rules={[{ required: true, message: 'Please input the first name!' }]}
+              >
+                <Input placeholder="First Name" />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} sm={8}>
+              <Form.Item
+                name="middleName"
+                label="Middle Name"
+              >
+                <Input placeholder="Middle Name" />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} sm={8}>
+              <Form.Item
+                name="lastName"
+                label="Last Name"
+                rules={[{ required: true, message: 'Please input the last name!' }]}
+              >
+                <Input placeholder="Last Name" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {/* Email and Phone in one row */}
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="email"
+                label="Email Address"
+                rules={[
+                  { required: true, message: 'Please input the email address!' },
+                  { type: 'email', message: 'Please enter a valid email!' }
+                ]}
+              >
+                <Input placeholder="Email Address" />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="phone"
+                label="Mobile Number"
+              >
+                <Input placeholder="Mobile Number" />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item
             name="password"
             label="Password"
             rules={[{ required: true, message: 'Please input the password!' }]}
           >
-            <Input.Password />
+            <Input.Password placeholder="Default: 0000" />
           </Form.Item>
 
           <Form.Item

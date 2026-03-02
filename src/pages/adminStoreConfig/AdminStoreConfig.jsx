@@ -297,6 +297,16 @@ const AdminStoreConfig = () => {
         }));
        
         setParcelSetting(parcelSetting);
+        
+        // Parse ShippingDiscountTiers if it's a string
+        let parsedShippingTiers = storeConfig.ShippingDiscountTiers || [];
+        if (typeof parsedShippingTiers === 'string') {
+          try {
+            parsedShippingTiers = JSON.parse(parsedShippingTiers);
+          } catch (e) {
+            parsedShippingTiers = [];
+          }
+        }
 
         form.setFieldsValue(newTimeValues);
 
@@ -330,6 +340,7 @@ const AdminStoreConfig = () => {
           shippingRate: storeConfig.ShippingRate
             ? storeConfig.ShippingRate
             : 0,
+          shippingDiscountTiers: parsedShippingTiers,
           PromotionSubtitle1: storeConfig.PromotionSubtitle1 || '',
           PromotionText1: storeConfig.PromotionText1 || '',
           PromotionSubtitle2: storeConfig.PromotionSubtitle2 || '',
@@ -954,17 +965,22 @@ const AdminStoreConfig = () => {
             <Divider orientation="left" orientationMargin="0">
               Shipping Setting
             </Divider>
+            {/* Shipping Configuration */}
             <Row gutter={16}>
+              <Col span={6}>
+                <Form.Item name="shippingRate" label="Shipping Rate ($)">
+                  <InputNumber style={{ maxWidth: '100%' }} min={0} step={0.01} precision={2} />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            {/* Commented out fields - not needed */}
+            {/* <Row gutter={16}>
               <Col span={6}>
                 <Form.Item
                   name="freeShippingLimit"
                   label="Minimum Free Shipping ($)"
                 >
-                  <InputNumber style={{ maxWidth: '100%' }} min={0} />
-                </Form.Item>
-              </Col>
-              <Col span={6}>
-                <Form.Item name="shippingRate" label="Shipping Rate ($)">
                   <InputNumber style={{ maxWidth: '100%' }} min={0} />
                 </Form.Item>
               </Col>
@@ -985,7 +1001,65 @@ const AdminStoreConfig = () => {
                   <InputNumber style={{ maxWidth: '100%' }} min={0} />
                 </Form.Item>
               </Col>
-            </Row>
+            </Row> */}
+
+            {/* Shipping Discount Tiers */}
+            <Divider orientation="left" orientationMargin="0" style={{ marginTop: 20 }}>
+              Shipping Discount Tiers
+            </Divider>
+            <Form.List name="shippingDiscountTiers">
+              {(fields, { add, remove }) => (
+                <>
+                  {fields.map(({ key, name, ...restField }) => (
+                    <Row key={key} gutter={16} style={{ marginBottom: 8 }}>
+                      <Col span={8}>
+                        <Form.Item
+                          {...restField}
+                          name={[name, 'threshold']}
+                          label="Order Amount ($)"
+                          rules={[{ required: true, message: 'Required' }]}
+                        >
+                          <InputNumber min={0} style={{ width: '100%' }} placeholder="e.g., 50" />
+                        </Form.Item>
+                      </Col>
+                      <Col span={8}>
+                        <Form.Item
+                          {...restField}
+                          name={[name, 'discount']}
+                          label="Discount ($)"
+                          rules={[{ required: true, message: 'Required' }]}
+                        >
+                          <InputNumber min={0} style={{ width: '100%' }} placeholder="e.g., 5" />
+                        </Form.Item>
+                      </Col>
+                      <Col span={4}>
+                        <Form.Item label=" " colon={false}>
+                          <MinusCircleOutlined 
+                            onClick={() => remove(name)} 
+                            style={{ fontSize: 20, color: '#ff4d4f', cursor: 'pointer' }}
+                          />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  ))}
+                  {fields.length < 5 && (
+                    <Button 
+                      type="dashed" 
+                      onClick={() => add()} 
+                      icon={<PlusOutlined />}
+                      style={{ width: '50%', marginBottom: 16 }}
+                    >
+                      Add Shipping Discount Tier
+                    </Button>
+                  )}
+                  {fields.length === 0 && (
+                    <p style={{ color: '#999', marginBottom: 16 }}>
+                      No discount tiers configured. Click "Add Shipping Discount Tier" to create one.
+                    </p>
+                  )}
+                </>
+              )}
+            </Form.List>
 
             <Row gutter={16}>
               <Col span={12}>

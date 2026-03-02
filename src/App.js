@@ -10,6 +10,7 @@ import AdminStoreConfig from './pages/adminStoreConfig/AdminStoreConfig';
 import AdminList from './pages/adminList/AdminList.jsx';
 import OrderResult from './pages/orderConfirm/OrderConfirm.jsx';
 import OrderSucess from './pages/OrderSucess/OrderSucess.jsx';
+import OrderProcessing from './pages/OrderProcessing/OrderProcessing.jsx';
 import AdminStockItem from './pages/AdminStockItem/AdminStockItem.jsx';
 import CustomerAccount from './pages/CustomerAccount/CustomerAccount.jsx';
 import AdminUserList from './pages/adminUserList/AdminUserList.jsx';
@@ -40,6 +41,7 @@ const App = () => {
           <Route path="/adminStoreConfig" element={<AdminStoreConfig />} />
           <Route path="/shop/:storeUrl/product-details/:productId/:productDetials" element={<ProductDetail />} />
           <Route path="/checkout/:storeUrl/:encryptedOrderId?" element={<Checkout />} />
+          <Route path="/order-processing/:storeUrl/:encryptedOrderId" element={<OrderProcessing />} />
           <Route path="/order-success/:storeUrl/:encryptedOrderId?" element={<OrderSucess />} />
           <Route path="/order-success" element={<OrderResult />} />
           <Route path="/adminStockItem" element={<AdminStockItem />} />

@@ -218,7 +218,7 @@ const ProductDetail = () => {
                                                                 "arrows": false, 
                                                                 "asNavFor": ".nav-slider"
                                                             }'>
-                                                            <figure className="product-gallery__image zoom">
+                                                            <figure className="product-gallery__image zoom" style={{ position: 'relative' }}>
                                                                 <img
                                                                     draggable="false" // 禁用拖拽
                                                                     onContextMenu={(e) => e.preventDefault()} // 禁用右键菜单
@@ -229,6 +229,11 @@ const ProductDetail = () => {
                                                                         e.target.src = '/images/default-product-image.png';
                                                                     }}
                                                                 />
+                                                                {product.OutOfStock === 1 && (
+                                                                    <div className="out-of-stock-overlay">
+                                                                        <span className="out-of-stock-text">OUT OF STOCK</span>
+                                                                    </div>
+                                                                )}
                                                             </figure>
                                                             {/* 其他产品图片可以在这里添加 */}
                                                         </div>
@@ -287,50 +292,65 @@ const ProductDetail = () => {
                                             {/* )} */}
 
                                             {/* 添加到购物车部分 */}
-                                            <div className="product-action d-flex flex-sm-row align-items-sm-center flex-column align-items-start mb--30">
-                                                <div className="quantity-wrapper d-flex align-items-center mr--30 mr-xs--0 mb-xs--30">
-                                                    <label className="quantity-label" htmlFor="qty">Quantity:</label>
-                                                    <div className="item-quantity" style={{ marginTop: '0' }}>
-                                                        <button
-                                                            className="quantity-btn"
-                                                            onClick={() => {
-                                                                if (mokeQuantity > 1) {
-                                                                    setMokeQuantity(mokeQuantity - 1);
-                                                                }
-                                                            }}
-                                                        >
-                                                            -
-                                                        </button>
-
-                                                        <input
-                                                            type="number"
-                                                            value={mokeQuantity}
-                                                            className="quantity-input"
-                                                            onChange={(e) => {
-                                                                // 获取用户输入的值
-                                                                const value = e.target.value;
-
-                                                                // 将值转换为整数并确保它是正整数
-                                                                const intValue = parseInt(value, 10);
-
-                                                                // 只允许更新为正整数的值
-                                                                if (intValue > 0) {
-                                                                    setMokeQuantity(intValue);
-                                                                } else if (value === '') {
-                                                                    // 如果输入为空，允许清空
-                                                                    setMokeQuantity('');
-                                                                }
-                                                            }}
-                                                            min="1"
-                                                        />
-
-                                                        <button className="quantity-btn" onClick={() => setMokeQuantity(mokeQuantity + 1)}>+</button>
+                                            {product.OutOfStock === 1 ? (
+                                                <div className="product-action mb--30">
+                                                    <div className="out-of-stock-message" style={{
+                                                        padding: '15px 20px',
+                                                        backgroundColor: '#f8d7da',
+                                                        color: '#721c24',
+                                                        border: '1px solid #f5c6cb',
+                                                        borderRadius: '4px',
+                                                        fontWeight: '600'
+                                                    }}>
+                                                        This item is currently out of stock
                                                     </div>
                                                 </div>
-                                                <button type="button" className="btn btn-shape-square btn-size-sm" onClick={() => addToCart(selectedProduct, mokeQuantity)}>
-                                                    Add To Cart
-                                                </button>
-                                            </div>
+                                            ) : (
+                                                <div className="product-action d-flex flex-sm-row align-items-sm-center flex-column align-items-start mb--30">
+                                                    <div className="quantity-wrapper d-flex align-items-center mr--30 mr-xs--0 mb-xs--30">
+                                                        <label className="quantity-label" htmlFor="qty">Quantity:</label>
+                                                        <div className="item-quantity" style={{ marginTop: '0' }}>
+                                                            <button
+                                                                className="quantity-btn"
+                                                                onClick={() => {
+                                                                    if (mokeQuantity > 1) {
+                                                                        setMokeQuantity(mokeQuantity - 1);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                -
+                                                            </button>
+
+                                                            <input
+                                                                type="number"
+                                                                value={mokeQuantity}
+                                                                className="quantity-input"
+                                                                onChange={(e) => {
+                                                                    // 获取用户输入的值
+                                                                    const value = e.target.value;
+
+                                                                    // 将值转换为整数并确保它是正整数
+                                                                    const intValue = parseInt(value, 10);
+
+                                                                    // 只允许更新为正整数的值
+                                                                    if (intValue > 0) {
+                                                                        setMokeQuantity(intValue);
+                                                                    } else if (value === '') {
+                                                                        // 如果输入为空，允许清空
+                                                                        setMokeQuantity('');
+                                                                    }
+                                                                }}
+                                                                min="1"
+                                                            />
+
+                                                            <button className="quantity-btn" onClick={() => setMokeQuantity(mokeQuantity + 1)}>+</button>
+                                                        </div>
+                                                    </div>
+                                                    <button type="button" className="btn btn-shape-square btn-size-sm" onClick={() => addToCart(selectedProduct, mokeQuantity)}>
+                                                        Add To Cart
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

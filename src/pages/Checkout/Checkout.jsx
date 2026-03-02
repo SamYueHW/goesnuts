@@ -15,6 +15,7 @@ import {
   Typography,
   message,
   Radio,
+  Modal,
 } from 'antd';
 
 import {
@@ -44,6 +45,7 @@ const Checkout = () => {
   const { cartItems, total, updateCartQuantity, removeFromCart, addToCart } = useContext(CartContext);
 
   const [current, setCurrent] = useState(0);
+  const [isLoginModalVisible, setIsLoginModalVisible] = useState(false);
 
   const [storeId, setStoreId] = useState(null);
   const [showDifferentAddress, setShowDifferentAddress] = useState(
@@ -62,6 +64,8 @@ const Checkout = () => {
   const [surcharge, setSurcharge] = useState(0);
   const [deliveryInfo, setDeliveryInfo] = useState('');
   const [shippingCost, setShippingCost] = useState(0);
+  const [baseShippingCost, setBaseShippingCost] = useState(0);
+  const [shippingDiscountTiers, setShippingDiscountTiers] = useState([]);
   const [storeZIP, setStoreZIP] = useState('');
   const [defaultWeight, setDefaultWeight] = useState(0);
   const [defaultTagUnit, setDefaultTagUnit] = useState(0);
@@ -71,11 +75,42 @@ const Checkout = () => {
 
   const [finalTotal, setFinalTotal] = useState(0);
 
+  // State for Delivery Method (must be declared before useEffect)
+  const [deliveryMethod, setDeliveryMethod] = useState('delivery');
+
+  // Calculate shipping with discount
+  const calculateShippingWithDiscount = (baseShipping, orderTotal, discountTiers) => {
+    if (!discountTiers || !Array.isArray(discountTiers) || discountTiers.length === 0) {
+      return baseShipping;
+    }
+    
+    const sortedTiers = [...discountTiers].sort((a, b) => b.threshold - a.threshold);
+    
+    for (const tier of sortedTiers) {
+      if (orderTotal >= tier.threshold) {
+        const discountedShipping = baseShipping - tier.discount;
+        return Math.max(0, discountedShipping);
+      }
+    }
+    
+    return baseShipping;
+  };
+
+  // Calculate shipping cost with discount when total changes
+  useEffect(() => {
+    if (deliveryMethod === 'delivery') {
+      const discountedShipping = calculateShippingWithDiscount(baseShippingCost, total, shippingDiscountTiers);
+      setShippingCost(discountedShipping);
+    } else {
+      setShippingCost(0);
+    }
+  }, [total, baseShippingCost, shippingDiscountTiers, deliveryMethod]);
+
   // Calculate surcharge
   useEffect(() => {
     const surchargeAmount = surcharge ? (surcharge / 100) * (total+ shippingCost): 0;
     setFinalSurcharge(surchargeAmount);
-  }, [surcharge, total]);
+  }, [surcharge, total, shippingCost]);
 
   // Calculate final total
   useEffect(() => {
@@ -115,10 +150,6 @@ const Checkout = () => {
   const storeUrl = useParams().storeUrl;
   const encryptedOrderId = useParams().encryptedOrderId;
 
-  // State for Delivery Method
-  
-  const [deliveryMethod, setDeliveryMethod] = useState('delivery');
- 
   // Responsive Design
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   useEffect(() => {
@@ -257,6 +288,12 @@ const Checkout = () => {
         // Save user info to sessionStorage
         login(data.user, data.token);
         setCollapseActiveKey([]);
+        
+        // 如果是从购物车页面的登录弹窗登录的，关闭弹窗并跳转到下一步
+        if (isLoginModalVisible) {
+          setIsLoginModalVisible(false);
+          setCurrent(1); // 跳转到 checkout 页面
+        }
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -308,7 +345,26 @@ const Checkout = () => {
           setSurcharge(response.data.storeConfig.Surcharge || 0);
 
           setSpendForFreeShipping(response.data.storeConfig.FreeShippingLimit|| 0);
-          setShippingCost(response.data.storeConfig.ShippingRate || 0);
+          const baseShipping = response.data.storeConfig.ShippingRate || 0;
+          setBaseShippingCost(baseShipping);
+          
+          // Parse ShippingDiscountTiers if it's a string
+          let discountTiers = response.data.storeConfig.ShippingDiscountTiers || [];
+          if (typeof discountTiers === 'string') {
+            try {
+              discountTiers = JSON.parse(discountTiers);
+            } catch (e) {
+              discountTiers = [];
+            }
+          }
+          setShippingDiscountTiers(discountTiers);
+          
+          // Calculate shipping with discount immediately
+          if (deliveryMethod === 'delivery') {
+            const discountedShipping = calculateShippingWithDiscount(baseShipping, total, discountTiers);
+            setShippingCost(discountedShipping);
+          }
+          
           setDefaultTagUnit(response.data.storeConfig.DefaultProductUnit || 0);
           setDefaultWeight(response.data.storeConfig.DefaultProductWeight || 0);
      
@@ -342,111 +398,111 @@ const Checkout = () => {
   };
 
   // Fetch Shipping Cost
-  useEffect(() => {
-    const fetchShippingCost = async () => {
-      try {
+  // useEffect(() => {
+  //   const fetchShippingCost = async () => {
+  //     try {
 
-        if (deliveryMethod === 'delivery') {
+  //       if (deliveryMethod === 'delivery') {
           
          
-          // console.log('fetching shipping cost...',total);
-          // console.log("current total",shippingCost);
-          if (total >= spendForFreeShipping) {
-            setShippingCost(0);
-          } else {
+  //         // console.log('fetching shipping cost...',total);
+  //         // console.log("current total",shippingCost);
+  //         if (total >= spendForFreeShipping) {
+  //           setShippingCost(0);
+  //         } else {
            
-            const defaultTagId = 0; // 用于存储默认 tag 的 id
-            const tagSummary = {}; // 用于存储每个 tag 的总数量和分量
+  //           const defaultTagId = 0; // 用于存储默认 tag 的 id
+  //           const tagSummary = {}; // 用于存储每个 tag 的总数量和分量
            
            
-            // 遍历 cartItems，统计每个 tag 的总数量和总价
-            cartItems.forEach((item) => {
-              const tagId = item.type === 0 ? item.tagId : item.packTagId || defaultTagId;
-              const weight =
-              item.type === 0
-                ? (item.weight != null ? item.weight : defaultWeight)
-                : (item.packWeight != null ? item.packWeight : defaultWeight);
+  //           // 遍历 cartItems，统计每个 tag 的总数量和总价
+  //           cartItems.forEach((item) => {
+  //             const tagId = item.type === 0 ? item.tagId : item.packTagId || defaultTagId;
+  //             const weight =
+  //             item.type === 0
+  //               ? (item.weight != null ? item.weight : defaultWeight)
+  //               : (item.packWeight != null ? item.packWeight : defaultWeight);
 
-              if (!tagSummary[tagId]) {
-                tagSummary[tagId] = { quantity: 0, weight: 0 };
-              }
-              tagSummary[tagId].quantity += item.quantity;
-              tagSummary[tagId].weight += item.quantity * weight;
+  //             if (!tagSummary[tagId]) {
+  //               tagSummary[tagId] = { quantity: 0, weight: 0 };
+  //             }
+  //             tagSummary[tagId].quantity += item.quantity;
+  //             tagSummary[tagId].weight += item.quantity * weight;
            
-            });
-            const deliveryZip = (billingInfo.billingAddress.zip !== billingInfo.deliveryAddress.zip && billingInfo.deliveryAddress!=='' )? billingInfo.deliveryAddress.zip : billingInfo.billingAddress.zip;
+  //           });
+  //           const deliveryZip = (billingInfo.billingAddress.zip !== billingInfo.deliveryAddress.zip && billingInfo.deliveryAddress!=='' )? billingInfo.deliveryAddress.zip : billingInfo.billingAddress.zip;
            
-            if (Object.keys(tagSummary).length > 0 &&  deliveryZip) {
+  //           if (Object.keys(tagSummary).length > 0 &&  deliveryZip) {
             
-            const response = await axios.post(`${process.env.REACT_APP_SERVER_URL}/calculateShippingCost`, {
+  //           const response = await axios.post(`${process.env.REACT_APP_SERVER_URL}/calculateShippingCost`, {
             
-              tagSummary,
-              storeUrl,
-              deliveryZip,
+  //             tagSummary,
+  //             storeUrl,
+  //             deliveryZip,
               
-            });
-            console.log("response",response);
-            if (response.status === 200) {
+  //           });
+  //           console.log("response",response);
+  //           if (response.status === 200) {
              
-              // response.data ={
-              //   AUS_PARCEL_EXPRESS: {
-              //     service: 'Express Post',
-              //     delivery_time: 'Guaranteed Next Business Day within the Express Post network (If posted on any business day Monday to Friday in accordance with the conditions set out on the item).',  
-              //     total_cost: '14.45',
-              //     costs: { cost: [Object] }
-              //   },
-              //   AUS_PARCEL_REGULAR: {
-              //     service: 'Parcel Post',
-              //     delivery_time: 'Delivered in 2-3 business days',
-              //     total_cost: '10.95',
-              //     costs: { cost: [Object] }
-              //   }
-              // }
-              setExpressDetails(response.data.AUS_PARCEL_EXPRESS);
-              setRegularDetails(response.data.AUS_PARCEL_REGULAR);
+  //             // response.data ={
+  //             //   AUS_PARCEL_EXPRESS: {
+  //             //     service: 'Express Post',
+  //             //     delivery_time: 'Guaranteed Next Business Day within the Express Post network (If posted on any business day Monday to Friday in accordance with the conditions set out on the item).',  
+  //             //     total_cost: '14.45',
+  //             //     costs: { cost: [Object] }
+  //             //   },
+  //             //   AUS_PARCEL_REGULAR: {
+  //             //     service: 'Parcel Post',
+  //             //     delivery_time: 'Delivered in 2-3 business days',
+  //             //     total_cost: '10.95',
+  //             //     costs: { cost: [Object] }
+  //             //   }
+  //             // }
+  //             setExpressDetails(response.data.AUS_PARCEL_EXPRESS);
+  //             setRegularDetails(response.data.AUS_PARCEL_REGULAR);
               
-              setDeliveryInfo(response.data.AUS_PARCEL_REGULAR.delivery_time);
-              setShippingCost(parseFloat(response.data.AUS_PARCEL_REGULAR.total_cost));
+  //             setDeliveryInfo(response.data.AUS_PARCEL_REGULAR.delivery_time);
+  //             setShippingCost(parseFloat(response.data.AUS_PARCEL_REGULAR.total_cost));
               
-            }
-          } else {
-            message.error('There is something wrong with the delivery address, please contact store owner.');
-          }
+  //           }
+  //         } else {
+  //           message.error('There is something wrong with the delivery address, please contact store owner.');
+  //         }
           
            
-          }
-        } else {
-          // If pickup is selected, no shipping cost
-          setShippingCost(0);
-        }
-      } catch (error) {
-        console.error(
-          'Error fetching shipping cost:',
-          error.response ? error.response.data : error.message
-        );
-      }
-    };
+  //         }
+  //       } else {
+  //         // If pickup is selected, no shipping cost
+  //         setShippingCost(0);
+  //       }
+  //     } catch (error) {
+  //       console.error(
+  //         'Error fetching shipping cost:',
+  //         error.response ? error.response.data : error.message
+  //       );
+  //     }
+  //   };
 
-    if (!loading && storeZIP && current === 2 ) {
+  //   if (!loading && storeZIP && current === 2 ) {
      
-      fetchShippingCost();
-    }
-  }, [
+  //     fetchShippingCost();
+  //   }
+  // }, [
  
-    spendForFreeShipping,
-    storeZIP,
-    billingInfo?.deliveryAddress?.zip, // 确保 billingInfo 和 zip 安全
-  billingInfo?.billingAddress?.zip,
-    // billingInfo.deliveryAddress.zip||billingInfo.billingAddress.zip,
-    deliveryMethod,
-    cartItems,
-    defaultTagUnit,
-    defaultWeight,
+  //   spendForFreeShipping,
+  //   storeZIP,
+  //   billingInfo?.deliveryAddress?.zip, // 确保 billingInfo 和 zip 安全
+  // billingInfo?.billingAddress?.zip,
+  //   // billingInfo.deliveryAddress.zip||billingInfo.billingAddress.zip,
+  //   deliveryMethod,
+  //   cartItems,
+  //   defaultTagUnit,
+  //   defaultWeight,
    
-    loading,
-    current
+  //   loading,
+  //   current
 
-  ]);
+  // ]);
 
   // Place Order Function
   const placeOrder = async () => {
@@ -487,22 +543,15 @@ const Checkout = () => {
 
 
     try {
-      if (payFirst === 1) {
-        const response = await axios.post(`${process.env.REACT_APP_SERVER_URL}/placeOrder`, orderData);
-        if (response.status === 200) {
-          window.location.href = response.data.url;
-        } else if (response.status === 411) {
-          message.error('Store is not configured for online payment. Please contact store owner.');
-        }
-      } else {
-        const response = await axios.post(`${process.env.REACT_APP_SERVER_URL}/placeNoPayOrder`, orderData);
-        if (response.status === 200) {
-          window.location.href = response.data.url;
-        }
+      // Call Stripe payment API
+      const response = await axios.post(`${process.env.REACT_APP_SERVER_URL}/placeOrder`, orderData);
+      if (response.status === 200 && response.data.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = response.data.url;
       }
     } catch (error) {
       console.error('Error placing order:', error.response ? error.response.data : error.message);
-      message.error('Error placing order. ' + (error.response ? error.response.data : error.message));
+      message.error('Error creating payment session. ' + (error.response ? error.response.data : error.message));
     }
   };
 
@@ -636,6 +685,11 @@ const Checkout = () => {
   };
 
   const next = () => {
+    // 检查是否在购物车页面（current === 0）且用户未登录
+    if (current === 0 && !isAuthenticated) {
+      setIsLoginModalVisible(true);
+      return;
+    }
     setCurrent(current + 1);
   };
 
@@ -830,44 +884,29 @@ const Checkout = () => {
               <span>AUD {total.toFixed(2)}</span>
             </div>
            
-     
+            {/* Display shipping cost */}
             {billingInfo.deliveryMethod === 'delivery' && (
-                <>
-                  <div className="order-summary-summary-row" style={{ flexDirection: 'column', gap: '10px' }}>
-                  
-                    <Radio.Group
-                      onChange={(e) => handleShippingService(e.target.value)}
-                      value={shippingService}
-                      className="order-summary-shipping-options"
-                      style={{ width: '100%' }}
-                    >
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <Radio value="regular" style={{ padding: '8px', border: '1px solid #e8e8e8', borderRadius: '4px' }}>
-                          Regular (Parcel Post)
-                        </Radio>
-                        <Radio value="express" style={{ padding: '8px', border: '1px solid #e8e8e8', borderRadius: '4px' }}>
-                          Express (Express Post)
-                        </Radio>
-                      </div>
-                    </Radio.Group>
-                    <div className="order-summary-text" style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
-                      * {shippingService === 'express' 
-                          ? 'Shipped within 1 business day. Guaranteed Next Business Day within the Express Post network'
-                          : `Shipped within 1 business day. ${deliveryInfo}`}
-                    </div>
-                    {shippingCost > 40 && (
-                      <div className="order-summary-text" style={{ fontSize: '12px', color: '#666' }}>
-                        If you have any questions about shipping, you can call the store for advice: (03) 9551 7292
-                      </div>
+              <>
+                <div className="order-summary-summary-row">
+                  <span>SHIPPING</span>
+                  <span>
+                    {baseShippingCost > shippingCost && (
+                      <span style={{ textDecoration: 'line-through', color: '#999', marginRight: '8px' }}>
+                        AUD {baseShippingCost.toFixed(2)}
+                      </span>
                     )}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                      <span>SHIPPING</span>
-                      <span>AUD {shippingCost.toFixed(2)}</span>
-                    </div>
+                    <span>AUD {shippingCost.toFixed(2)}</span>
+                  </span>
+                </div>
+                {baseShippingCost > shippingCost && (
+                  <div className="order-summary-text" style={{ fontSize: '12px', color: '#52c41a', marginTop: '-8px', marginBottom: '8px', textAlign: 'right' }}>
+                    Shipping discount applied: -AUD {(baseShippingCost - shippingCost).toFixed(2)}
                   </div>
-                </>
+                )}
+              </>
             )}
-             {surcharge !== 0 && (<div className="order-summary-summary-row">
+            
+            {surcharge !== 0 && (<div className="order-summary-summary-row">
               <span>SURCHARGE ({surcharge || 0}%)</span>
               <span>AUD {finalSurcharge.toFixed(2)}</span>
             </div>)}
@@ -901,6 +940,57 @@ const Checkout = () => {
             console.log('');
           }}
         />
+
+        {/* Login Modal for Checkout */}
+        <Modal
+          title="Please Login to Continue"
+          open={isLoginModalVisible}
+          onCancel={() => setIsLoginModalVisible(false)}
+          footer={null}
+          centered
+        >
+          <div style={{ marginBottom: '16px', color: '#666' }}>
+            You need to login before proceeding to checkout.
+          </div>
+          <Form
+            layout="vertical"
+            onFinish={(values) => {
+              handleLogin(values);
+            }}
+          >
+            <Form.Item
+              name="email"
+              label="Email"
+              rules={[
+                { required: true, message: 'Please input your email!' },
+                { type: 'email', message: 'Please enter a valid email!' },
+              ]}
+            >
+              <Input placeholder="Your Email" />
+            </Form.Item>
+            <Form.Item
+              name="password"
+              label="Password"
+              rules={[{ required: true, message: 'Please input your password!' }]}
+            >
+              <Input.Password placeholder="Your Password" />
+            </Form.Item>
+            <Form.Item>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={loginLoading}
+                block
+                style={{
+                  height: '45px',
+                  fontSize: '16px',
+                }}
+              >
+                Login
+              </Button>
+            </Form.Item>
+          </Form>
+        </Modal>
 
         <section className="">
           <div className="inner-banner-bottom">

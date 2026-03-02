@@ -384,13 +384,13 @@ function LoginForm({ onRegister, onForgotPassword, onSuccess }) {
       </Form.Item>
 
       {/* Forgot Password Link */}
-      <Form.Item>
+      {/* <Form.Item>
         <div>
           <Button type="link" onClick={onForgotPassword}>
             Forgot password?
           </Button>
         </div>
-      </Form.Item>
+      </Form.Item> */}
 
       {/* Login Button */}
       <Form.Item>
@@ -414,7 +414,7 @@ function LoginForm({ onRegister, onForgotPassword, onSuccess }) {
       </Form.Item>
 
       {/* Register Section */}
-      <Form.Item>
+      {/* <Form.Item>
         <div style={{ textAlign: 'center', marginBottom: '10px' }}>
           <span>Not a member? Create an account</span>
         </div>
@@ -435,7 +435,7 @@ function LoginForm({ onRegister, onForgotPassword, onSuccess }) {
             Register
           </Button>
         </div>
-      </Form.Item>
+      </Form.Item> */}
     </Form>
   );
 }

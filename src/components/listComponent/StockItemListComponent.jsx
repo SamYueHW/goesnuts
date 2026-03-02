@@ -633,6 +633,48 @@ const deleteStockItem = async (record) => {
     //   PAGE_SIZE
     // );
   };
+
+  const handleOutOfStockChange = async (stockOnlineId, checked) => {
+    try {
+      const token = sessionStorage.getItem('jwtToken');
+      const config = {
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+      };
+
+      await axios.post(
+        `${process.env.REACT_APP_SERVER_URL}/updateStockItem`,
+        {
+          stockOnlineId,
+          OutOfStock: checked ? 1 : 0,
+        },
+        config
+      );
+
+      notification.success({
+        message: 'Success',
+        description: 'Stock status updated successfully.',
+      });
+
+      // Refresh the stock items list
+      fetchStockItems(
+        categoryFilter,
+        tagFilter,
+        stockSearchKeyword,
+        isStockSearchAll,
+        pagination.current,
+        PAGE_SIZE
+      );
+    } catch (error) {
+      console.error('Error updating stock status:', error);
+      notification.error({
+        message: 'Error',
+        description: 'Failed to update stock status.',
+      });
+    }
+  };
+
   const handleCancel = () => {
     setIsStockModalVisible(false);
     stockForm.resetFields(); // Clear the form fields
@@ -731,7 +773,18 @@ const deleteStockItem = async (record) => {
         }
       },
     },
-    
+    {
+      title: 'Out of Stock',
+      dataIndex: 'OutOfStock',
+      key: 'OutOfStock',
+      width: 120,
+      render: (value, record) => (
+        <Switch 
+          checked={value === 1}
+          onChange={(checked) => handleOutOfStockChange(record.StockOnlineId, checked)}
+        />
+      )
+    },
     {
       title: 'Upload Image',
       dataIndex: 'upload',

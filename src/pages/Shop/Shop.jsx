@@ -262,25 +262,28 @@ useEffect(() => {
     };
 
     function itemStructureConverter(rawData, storeId, isMember) {
-      return rawData.map((item) => {
-        const imgSrc = `${process.env.REACT_APP_SERVER_URL}/images/${storeId}/stockItems/${item.StockId}.jpg`;
-        return {
-          id: item.StockId,
-          StockOnlineId: item.StockOnlineId,
-          name: item.Description1,
-          name2: item.Description2,
-          name3: item.Description3,
-          name4: item.Description4,
-          category: item.Category,
-          price: isMember ? item.MemberPrice : item.SalesPrice,
-          GSTRate: item.GSTRate,
-          imgSrc: imgSrc,
-          notes: item.Notes,
-          oldPrice: null,
-          outOfStock: item.Enable === 0,
-          PackSalesPrice: isMember ? item.MemberPackPrice : item.PackSalesPrice,
-        };
-      });
+      // Filter out disabled items (Enable === 0)
+      return rawData
+        .filter((item) => item.Enable !== 0)
+        .map((item) => {
+          const imgSrc = `${process.env.REACT_APP_SERVER_URL}/images/${storeId}/stockItems/${item.StockId}.jpg`;
+          return {
+            id: item.StockId,
+            StockOnlineId: item.StockOnlineId,
+            name: item.Description1,
+            name2: item.Description2,
+            name3: item.Description3,
+            name4: item.Description4,
+            category: item.Category,
+            price: isMember ? item.MemberPrice : item.SalesPrice,
+            GSTRate: item.GSTRate,
+            imgSrc: imgSrc,
+            notes: item.Notes,
+            oldPrice: null,
+            outOfStock: item.OutOfStock === 1,
+            PackSalesPrice: isMember ? item.MemberPackPrice : item.PackSalesPrice,
+          };
+        });
     }
 
     fetchCategories();
@@ -493,6 +496,11 @@ useEffect(() => {
                                     }}
                                   />
                                 </Link>
+                                {product.outOfStock && (
+                                  <div className="out-of-stock-overlay">
+                                    <span className="out-of-stock-text">OUT OF STOCK</span>
+                                  </div>
+                                )}
                                 {product.oldPrice && <span className="price-dec">-30%</span>}
                               </div>
                               <div className="product-content">
